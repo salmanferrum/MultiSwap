@@ -2,13 +2,13 @@
 pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-// import "@openzeppelin//contracts/token/ERC20/IERC20.sol";
+
 
 library SafeAmount {
     using SafeERC20 for IERC20;
 
     /**
-     @notice transfer tokens from. Incorporate fee on transfer tokens
+     @notice transfer tokens, disallow fee on transfer tokens
      @param token The token
      @param from From address
      @param to To address
@@ -24,7 +24,7 @@ library SafeAmount {
         IERC20(token).safeTransferFrom(from, to, amount);
         uint256 postBalance = IERC20(token).balanceOf(to);
         result = postBalance - preBalance;
-        require(result <= amount, "SA: actual amount larger than transfer amount");
+        require(result >= amount, "SA: actual amount larger than transfer amount");
     }
 
     /**

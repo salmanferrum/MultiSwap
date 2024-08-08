@@ -1,60 +1,60 @@
-import { buildModule } from "@nomicfoundation/hardhat-ignition/modules"
-import hre from "hardhat"
+import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
+import hre from "hardhat";
 import addresses from "../../constants/addresses.json"
 
-export default buildModule("Multiswap", (m) => {
-  const currentNetwork = hre.network.name
 
-  ///// Default values. Should only take the passed in value in unit tests
-  const defaultWeth = addresses.networks[currentNetwork].weth
-  const defaultFoundry = addresses.networks[currentNetwork].foundry
-  
-  const weth = m.getParameter("weth", defaultWeth)
-  const foundry = m.getParameter("foundry", defaultFoundry)
+export default buildModule("MultiSwap", (m) => {
+    const currentNetwork = hre.network.name
 
-  ///// Deploy contracts
-  const fiberRouter = m.contract("FiberRouter", [weth])
-  const fundManager = m.contract("FundManager")
-  const multiswapForge = m.contract("MultiSwapForge", [weth])
-  const forgeManager = m.contract("ForgeFundManager")
+    // Parameters for deployment from constants.json
 
-  ///// Post deploy configs
-  m.call(fiberRouter, "setPool", [fundManager])
-  m.call(fiberRouter, "setGasWallet", [addresses.gasWallet])
-  m.call(fundManager, "setRouter", [fiberRouter])
-  m.call(fundManager, "addFoundryAsset", [foundry]) 
-  m.call(fundManager, "addSigner", [addresses.signer])
-  m.call(fundManager, "setLiquidityManagers", [addresses.liquidityManager, addresses.liquidityManagerBot])
-  m.call(fundManager, "setWithdrawalAddress", [addresses.withdrawal])
-  m.call(fundManager, "setSettlementManager", [addresses.settlementManager])
+    // Parameters for deployment
+    const portalAddress = m.getParameter("quantumPortal", addresses.networks[currentNetwork].quantumPortal)
+    const gasWalletAddress = m.getParameter("gasWalletAddress", addresses.gasWallet)
+    const settlementManagerAddress = m.getParameter("settlementManager", addresses.settlementManager)
+    const liquidityManagerAddress = m.getParameter("liquidityManager", addresses.liquidityManager)
+    const liquidityManagerBotAddress = m.getParameter("liquidityManagerBot", addresses.liquidityManagerBot)
+    const withdrawalAddress = m.getParameter("withdrawalAddress", addresses.withdrawal)
+    const ccipRouter = m.getParameter("ccipRouter", addresses.networks[currentNetwork].ccipRouter)
+    const oneInchRouter = m.getParameter("oneInchRouter", addresses.networks[currentNetwork].oneInchRouter)
+    const lzEndpoint = m.getParameter("lzEndpoint", addresses.lzEndpoint)
+    const stargateUsdc = m.getParameter("stargateUsdc", addresses.networks[currentNetwork].stargateUsdc)
+    
+    // Deploy Pool contract
+    const pool = m.contract("Pool", [
+        settlementManagerAddress,
+        liquidityManagerAddress,
+        liquidityManagerBotAddress,
+        withdrawalAddress,
+        ccipRouter
+    ])
 
-  m.call(multiswapForge, "setPool", [forgeManager])
-  m.call(multiswapForge, "setGasEstimationAddress", [addresses.gasEstimationWallet])
-  m.call(forgeManager, "setRouter", [multiswapForge])
-  m.call(forgeManager, "addFoundryAsset", [foundry])
+    // Deploy FiberRouter contract
+    const fiberRouter = m.contract("FiberRouter", [
+        pool,
+        gasWalletAddress,
+        portalAddress,
+        ccipRouter
+    ])
 
-  if (currentNetwork != "hardhat") {
-    // Add routers and selectors. Selectors need to be computed with scripts/computeSelectors.ts and added to constants/addresses.json beforehand
-    const swapRouters = addresses.networks[currentNetwork].routers
-    for (const swapRouter of swapRouters) {
-      const router = swapRouter.router
-      const selectors = swapRouter.selectors
-      for (const selector of selectors) {
-        m.call(fiberRouter, "addRouterAndSelector", [router, selector], { id: `FiberRouter_addRouterAndSelector${selector}` })
-        m.call(multiswapForge, "addRouterAndSelector", [router, selector], { id: `MultiSwapForge_addRouterAndSelector${selector}` })
-      }
-    }
+    // Post deployment configuration for FiberRouter contract
+    m.call(pool, "setFiberRouter", [fiberRouter])
 
-    // Allow targets for other networks
-    const otherNetworks = Object.keys(addresses.networks).filter((network) => network !== currentNetwork && network !== "hardhat")
-    for (const otherNetwork of otherNetworks) {
-      m.call(fundManager, "allowTarget", [
-        foundry,
-        addresses.networks[otherNetwork].chainId,
-        addresses.networks[otherNetwork].foundry
-      ], { id: `allowTarget${otherNetwork}` })
-    }
-  }
+    // On Arbitrum side
+    // m.call(fiberRouter, "addTokenPaths", [
+    //     ["0xaf88d065e77c8cC2239327C5EDb3A432268e5831"],
+    //     [8453],
+    //     ["0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"]
+    // ])
+    // m.call(fiberRouter, "setChainIdAndCcipChainSelectorPairs", [[8453], ["15971525489660198786"]])
 
-  return { fiberRouter, fundManager, multiswapForge, forgeManager };
+    // On Base side
+    m.call(fiberRouter, "addTokenPaths", [
+        ["0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"],
+        [42161],
+        ["0xaf88d065e77c8cC2239327C5EDb3A432268e5831"]
+    ])
+    m.call(fiberRouter, "setChainIdAndCcipChainSelectorPairs", [[42161], ["4949039107694359620"]])
+
+    return { fiberRouter, pool }
 });
