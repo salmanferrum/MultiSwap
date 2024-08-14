@@ -6,7 +6,6 @@ import { Client } from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client
 import { IRouterClient } from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IRouterClient.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./LiquidityManagerRole.sol";
-import "hardhat/console.sol";
 
 
 contract Pool is LiquidityManagerRole, CCIPReceiver {
@@ -45,10 +44,6 @@ contract Pool is LiquidityManagerRole, CCIPReceiver {
         address recipient,
         uint256 amount
     ) external onlyFiberRouter {
-        console.log("Balance Pool: %s", IERC20(token).balanceOf(address(this)));
-        console.log("Amount Pool: %s", amount);
-        console.log("Recipient Pool: %s", recipient);
-        console.log("Token Pool: %s", token);
         TokenReceivable.sendToken(token, recipient, amount);
     }
 

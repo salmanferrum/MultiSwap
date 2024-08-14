@@ -5,7 +5,6 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { BaseRouter } from "./BaseRouter.sol";
 import { CCIPApp } from "./CCIPApp.sol";
 import { QuantumPortalApp } from "./QuantumPortalApp.sol";
-// import { ITSApp } from "./ITSApp.sol";
 
 
 contract FiberRouter is QuantumPortalApp, CCIPApp {
@@ -15,13 +14,7 @@ contract FiberRouter is QuantumPortalApp, CCIPApp {
         address payable gasWallet,
         address portal,
         address ccipRouter
-    )
-        QuantumPortalApp(portal)
-        Ownable(msg.sender)
-        CCIPApp(ccipRouter)
-        BaseRouter(pool, gasWallet) 
-        // ITSApp(interchainTokenService)
-    {}
+    ) QuantumPortalApp(portal) Ownable(msg.sender) CCIPApp(ccipRouter) BaseRouter(pool, gasWallet) {}
 
     function cross(
         address sourceFoundryToken,
@@ -34,11 +27,14 @@ contract FiberRouter is QuantumPortalApp, CCIPApp {
         require(amountIn > 0, "FR: Amount in must be greater than zero");
         require(recipient != address(0), "FR: Recipient address cannot be zero");
 
+        amountIn = _moveTokens(sourceFoundryToken, msg.sender, address(this), amountIn);
+
+        // Fee logic here
+
         if (swapType == 0) {
-            amountIn = _transferToPool(sourceFoundryToken, msg.sender, amountIn);
+            amountIn = _transferToPool(sourceFoundryToken, address(this), amountIn);
             _bridgeWithPortal(dstChainId, recipient, sourceFoundryToken, amountIn, feeAmount);
         } else if (swapType == 1) {
-            amountIn = _moveTokens(sourceFoundryToken, msg.sender, address(this), amountIn);
             _bridgeWithCcip(dstChainId, sourceFoundryToken, amountIn, abi.encode(recipient));
         } else {
             revert("FR: Invalid swap type");
