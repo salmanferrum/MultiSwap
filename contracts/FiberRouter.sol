@@ -25,7 +25,6 @@ contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIP
         address sourceFoundryToken,
         uint256 amountIn,
         uint256 feeAmount,
-        address sender,
         address recipient,
         uint64 dstChainId,
         uint256 swapType,
@@ -35,7 +34,6 @@ contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIP
             sourceFoundryToken,
             amountIn,
             feeAmount,
-            sender,
             recipient,
             dstChainId,
             swapType,
@@ -48,7 +46,6 @@ contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIP
         address sourceFoundryToken,
         uint256 amountIn,
         uint256 feeAmount,
-        address sender,
         address recipient,
         uint64 dstChainId,
         uint256 swapType,
@@ -59,7 +56,6 @@ contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIP
             sourceFoundryToken,
             amountIn,
             feeAmount,
-            sender,
             recipient,
             dstChainId,
             swapType,
@@ -134,7 +130,6 @@ contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIP
         address sourceFoundryToken,
         uint256 amountIn,
         uint256 feeAmount,
-        address sender,
         address recipient,
         uint64 dstChainId,
         uint256 swapType,
@@ -153,7 +148,7 @@ contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIP
         } else if (swapType == 1) {
             _bridgeWithCcip(dstChainId, sourceFoundryToken, amountIn, abi.encode(recipient));
         } else if (swapType == 2) {
-            _bridgeWithStargate(amountIn, sender, recipient, dstChainId);
+            _bridgeWithStargate(amountIn, msg.sender, recipient, dstChainId);
         } else {
             revert("FR: Invalid swap type");
         }
