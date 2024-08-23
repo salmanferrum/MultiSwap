@@ -6,7 +6,8 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract FeeDistributor is EIP712, Ownable {
+
+abstract contract FeeDistributor is EIP712, Ownable {
     using SafeERC20 for IERC20;
     using ECDSA for bytes32;
     string public constant NAME = "FEE_DISTRIBUTOR";
@@ -17,50 +18,36 @@ contract FeeDistributor is EIP712, Ownable {
 
     mapping(address => bool) public signers;
     mapping(bytes32 => bool) public usedSalt;
+    mapping(address => ReferralData) public referrals;
 
-    bytes32 constant DISTRIBUTE_FEES_TYPEHASH = keccak256(
-        "DistributeFees(address token,address referral,uint256 referralFee,uint256 referralDiscount,uint256 sourceAmountIn,uint256 sourceAmountOut,uint256 destinationAmountIn,uint256 destinationAmountOut,bytes32 salt,uint256 expiry)"
+    bytes32 constant REFERRAL_CODE_TYPEHASH = keccak256(
+        "ReferralSignature(bytes32 salt,uint256 expiry)"
     );
 
-    struct FeeDistributionData {
-        address referral;
-        uint256 referralFee; // Referral fee as a percentage
-        uint256 referralDiscount; // Referral discount as a percentage
-        uint256 sourceAmountIn;
-        uint256 sourceAmountOut;
-        uint256 destinationAmountIn;
-        uint256 destinationAmountOut;
+    struct ReferralSignature {
         bytes32 salt;
         uint256 expiry;
         bytes signature;
     }
 
+    struct ReferralData {
+        address referral;
+        uint256 referralShare;
+        uint256 referralDiscount;
+    }
+
     event FeesDistributed(
-        address indexed token,
+        address token,
+        address referral,
         uint256 preFeeAmount,
-        uint256 afterFeeAmount,
-        uint256 totalPlatformFee
+        uint256 totalFee
     );
 
-    constructor() EIP712(NAME, VERSION) Ownable(msg.sender) {}
+    constructor() EIP712(NAME, VERSION) {}
 
-    /**
-     @dev sets the signer
-     @param _signer is the address that generates signatures
-     */
-    function addSigner(address _signer) external onlyOwner {
-        require(_signer != address(0), "FD: Bad signer");
-        signers[_signer] = true;
-    }
-
-    /**
-     @dev removes the signer
-     @param _signer is the address that generates signatures
-     */
-    function removeSigner(address _signer) external onlyOwner {
-        delete signers[_signer];
-    }
-
+    //#############################################################
+    //################ ADMIN FUNCTIONS ############################
+    //#############################################################
     /**
      @dev sets the fee wallet
      @param _feeWallet is the new fee wallet address
@@ -79,71 +66,61 @@ contract FeeDistributor is EIP712, Ownable {
         platformFee = _platformFee;
     }
 
+    function addReferral(
+        address referral,
+        uint256 referralShare,
+        uint256 referralDiscount,
+        address publicReferralCode
+    ) external onlyOwner {
+        require(referral != address(0), "FD: Bad referral address");
+        require(referralShare > 0 && referralShare <= 100, "FD: Invalid referral fee"); // Has to be between 1 and 100%
+        referrals[publicReferralCode] = ReferralData(referral, referralShare, referralDiscount);
+    }
+
+    //#############################################################
+    //################ INTERNAL LOGIC FUNCTIONS ###################
+    //#############################################################
+
     function _distributeFees(
         address token,
         uint256 preFeeAmount,
-        FeeDistributionData memory fdd
+        ReferralSignature memory refSigData
     ) internal returns (uint256) {
-        require(_verify(token, fdd), "FD: Invalid signature");
+        ReferralData memory referralData = _getReferralData(refSigData);
 
-        uint256 remainingAmount = preFeeAmount - platformFee;
-        uint256 referralDiscountAmount = 0;
-        uint256 referralFeeAmount = 0;
-        uint256 feeWalletShare = platformFee;
-
-        // If referral is provided, calculate the referral discount and referral fee
-        if (fdd.referral != address(0)) {
-            if (fdd.referralDiscount > 0) {
-                referralDiscountAmount = (platformFee * fdd.referralDiscount) / 100;
-                feeWalletShare -= referralDiscountAmount;
-                remainingAmount += referralDiscountAmount;
-            }
-
-            if (fdd.referralFee > 0) {
-                referralFeeAmount = (feeWalletShare * fdd.referralFee) / 100;
-                feeWalletShare -= referralFeeAmount;
-                IERC20(token).safeTransfer(fdd.referral, referralFeeAmount);
+        uint256 totalFee = platformFee;
+        if (totalFee > 0){
+            if (referralData.referral == address(0)) { // No or invalid referral code
+                IERC20(token).safeTransfer(feeWallet, totalFee);
+            } else {
+                totalFee -= totalFee * referralData.referralDiscount / 100;
+                uint256 referralShare = totalFee * referralData.referralShare / 100;
+                uint256 platformShare = totalFee - referralShare;
+                IERC20(token).safeTransfer(feeWallet, platformShare);
+                IERC20(token).safeTransfer(referralData.referral, referralShare);
             }
         }
 
-        // Ensure the total allocated fee does not exceed the platform fee
-        require(feeWalletShare + referralFeeAmount + referralDiscountAmount <= platformFee, "FD: Total fee exceeds platform fee");
-
-        // Transfer the remaining fee to the fee wallet
-        IERC20(token).safeTransfer(feeWallet, feeWalletShare);
-
-        emit FeesDistributed(token, preFeeAmount, remainingAmount, platformFee);
-
-        return remainingAmount;
+        emit FeesDistributed(token, referralData.referral, preFeeAmount, totalFee);
+        return preFeeAmount - totalFee;
     }
 
-    function _verify(
-        address token,
-        FeeDistributionData memory fdd
-    ) private returns (bool) {
-        require(block.timestamp < fdd.expiry, "FD: Signature timed out");
-        require(fdd.expiry < block.timestamp + (20 * MINUTE), "FD: Expiry too far"); // 20 minutes probably too generous. Users should be submitting tx soon after quote on source chain
-        require(!usedSalt[fdd.salt], "FM: Salt already used");
-        usedSalt[fdd.salt] = true;
+    function _getReferralData(ReferralSignature memory refSigData) private returns (ReferralData memory) {
+        require(block.timestamp < refSigData.expiry, "FD: Signature timed out");
+        require(refSigData.expiry < block.timestamp + (3 * MINUTE), "FD: Expiry too far");
+        require(!usedSalt[refSigData.salt], "FM: Salt already used");
+        usedSalt[refSigData.salt] = true;
 
         bytes32 structHash = keccak256(
             abi.encode(
-                DISTRIBUTE_FEES_TYPEHASH,
-                token,
-                fdd.referral,
-                fdd.referralFee,
-                fdd.referralDiscount,
-                fdd.sourceAmountIn,
-                fdd.sourceAmountOut,
-                fdd.destinationAmountIn,
-                fdd.destinationAmountOut,
-                fdd.salt,
-                fdd.expiry
+                REFERRAL_CODE_TYPEHASH,
+                refSigData.salt,
+                refSigData.expiry
             )
         );
 
         bytes32 digest = _hashTypedDataV4(structHash);
-        address signer = ECDSA.recover(digest, fdd.signature);
-        return signers[signer];
+        address referralCode = ECDSA.recover(digest, refSigData.signature);
+        return referrals[referralCode];
     }
 }

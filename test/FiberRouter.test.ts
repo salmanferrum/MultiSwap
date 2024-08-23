@@ -1,17 +1,16 @@
-import {
-time,
-loadFixture,
-} from "@nomicfoundation/hardhat-toolbox/network-helpers";
-import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
+import { loadFixture } from "@nomicfoundation/hardhat-toolbox/network-helpers";
 import { expect } from "chai";
+import { AbiCoder, Contract, id, randomBytes, Wallet } from "ethers";
 import hre from "hardhat";
 import MultiswapModule from "../ignition/modules/MultiSwap";
-import { AbiCoder } from "ethers";
+
 
 const chainId = 31337
 const million = 1000000n
+const abiCoder = AbiCoder.defaultAbiCoder()
 
-describe("FiberRouter", function () {
+describe("FiberRouter", () => {
+    const platformFee = 100n
     let fiberRouterSrc,
         fiberRouterDst,
         interchainTokenService,
@@ -22,14 +21,16 @@ describe("FiberRouter", function () {
         usdcSrc,
         usdcDst,
         frm,
-        weth,
+        wethSrc,
+        wethDst,
         signer,
         recipient,
         portalFeeRecipient,
+        multiswapFeeRecipient,
         ccipConfig
 
     async function deploymentFixture() {
-        [signer, recipient, portalFeeRecipient] = await hre.ethers.getSigners()
+        [signer, recipient, portalFeeRecipient, multiswapFeeRecipient] = await hre.ethers.getSigners()
 
         quantumPortal = await hre.ethers.deployContract("QuantumPortal")
         swapRouter = await hre.ethers.deployContract("SwapRouter")
@@ -37,7 +38,8 @@ describe("FiberRouter", function () {
         usdcSrc = await hre.ethers.deployContract("Token")
         usdcDst = await hre.ethers.deployContract("Token")
         frm = await hre.ethers.deployContract("Token")
-        weth = await hre.ethers.deployContract("Token")
+        wethSrc = await hre.ethers.deployContract("Token")
+        wethDst = await hre.ethers.deployContract("Token")
 
         const localSimulatorFactory = await hre.ethers.getContractFactory("CCIPLocalSimulator");
         const localSimulator = await localSimulatorFactory.deploy();
@@ -64,7 +66,6 @@ describe("FiberRouter", function () {
             }
         })
 
-        await fiberRouter.addRouterAndSelectors(swapRouter, ["0x268a380b"])
         await fiberRouter.setChainIdAndCcipChainSelectorPairs([chainId], [config.chainSelector_])
 
         fiberRouterSrc = fiberRouter
@@ -82,11 +83,9 @@ describe("FiberRouter", function () {
         await fiberRouter.setChainIdAndCcipChainSelectorPairs([chainId], [config.chainSelector_])
         fiberRouterDst = fiberRouter
         poolDst = pool
-
-        await fiberRouter.addRouterAndSelectors(swapRouter, ["0x268a380b"])
     }
 
-    beforeEach("should deploy and config MultiSwap", async function () {
+    beforeEach("should deploy and config MultiSwap", async () => {
         await loadFixture(deploymentFixture)
 
         expect(await fiberRouterSrc.pool()).to.equal(await poolSrc.getAddress())
@@ -108,97 +107,119 @@ describe("FiberRouter", function () {
         await fiberRouterDst.addTrustedRemotes([chainId], [fiberRouterSrc])
         expect(await fiberRouterSrc.trustedRemoteRouters(chainId)).to.equal(await fiberRouterDst.getAddress())
 
+        // Whitelist router and selectors
+        await fiberRouterSrc.addRouterAndSelectors(swapRouter, [swapRouter.interface.getFunction("swapExactTokensForTokens").selector])
+        await fiberRouterDst.addRouterAndSelectors(swapRouter, [
+            swapRouter.interface.getFunction("swapExactTokensForTokens").selector,
+            swapRouter.interface.getFunction("failingSwapExactTokensForTokens").selector
+        ])
+
         // Mint tokens
         await usdcSrc.mint(swapRouter, million)
-        await usdcSrc.mint(signer, million * 2n)
-        await usdcDst.mint(signer, million * 2n)
-        await weth.mint(swapRouter, million)
-        await weth.mint(signer, million)
-        await frm.mint(signer, million * million * million * million)
+        await usdcSrc.mint(signer, million)
+        await wethSrc.mint(signer, million)
+        await frm.mint(signer, million ** 4n)
+        await wethDst.mint(swapRouter, million)
 
         // Add liquidity to pools
+        await usdcSrc.mint(signer, million)
         await usdcSrc.approve(poolSrc, million)
         await poolSrc.addLiquidity(usdcSrc, million)
+
+        await usdcDst.mint(signer, million)
         await usdcDst.approve(poolDst, million)
         await poolDst.addLiquidity(usdcDst, million)
 
         // Set fee token on portal
-        await frm.approve(fiberRouterSrc, million * million)
+        await frm.approve(fiberRouterSrc, million ** 4n)
         await quantumPortal.setFeeToken(frm)
         await quantumPortal.setFeeTarget(portalFeeRecipient)
+
+        // Set multiswap platform fee
+        await fiberRouterSrc.setFeeWallet(multiswapFeeRecipient)
+        await fiberRouterSrc.setPlatformFee(platformFee)
     })
-    
-    describe("Quantum Portal", function () {
-        
-        it("Sould initiate a cross chain transfer", async function () {
-            const amount = 100n
-            const bridgeFee = 10n
+
+    describe("Quantum Portal", () => {
+        it("Sould do a cross chain transfer", async () => {
+            const amount = 100000n
+            const frmBridgeFee = 1234n
 
             await usdcSrc.approve(fiberRouterSrc, amount)
+            const refSigData = await getDummyReferralSig("dummy", fiberRouterSrc)
+
             const tx = fiberRouterSrc.cross(
                 usdcSrc,
                 amount,
-                1234,
+                frmBridgeFee,
                 recipient,
                 chainId,
                 0,
-                {value: bridgeFee}
+                refSigData
             )
 
             await expect(tx).to.changeTokenBalances(
                 usdcSrc,
-                [signer, fiberRouterSrc, poolSrc, poolDst, recipient],
-                [-amount, 0, amount, 0, 0]
+                [signer, fiberRouterSrc, poolSrc, poolDst, recipient, multiswapFeeRecipient],
+                [-amount, 0, amount-platformFee, 0, 0, platformFee]
             )
 
             await expect(tx).to.changeTokenBalances(
                 usdcDst,
                 [signer, fiberRouterDst, poolSrc, poolDst, recipient],
-                [0, 0, 0, -amount, amount]
+                [0, 0, 0, -amount+platformFee, amount-platformFee]
+            )
+
+            await expect(tx).to.changeTokenBalances(
+                frm,
+                [signer, portalFeeRecipient],
+                [-frmBridgeFee, frmBridgeFee]
             )
         })
 
-        it("Should swap tokens and initiate a cross chain transfer", async function () {
-            await weth.approve(fiberRouterSrc, million * million)
-            const amount = 100n
+        it("Should swap tokens and do a cross chain transfer", async () => {
+            await wethSrc.approve(fiberRouterSrc, million)
+            const amount = 100000n
+            const amountOut = 90000n
             const bridgeFee = 10n
-            const abiCoder = AbiCoder.defaultAbiCoder()
 
-            const routerCalldata = abiCoder.encode(
-                ["uint256", "uint256", "address", "address", "address"],
-                [amount, amount / 2n, await weth.getAddress(), await usdcSrc.getAddress(), await fiberRouterSrc.getAddress()]
+            const routerCalldata = swapRouter.interface.encodeFunctionData(
+                "swapExactTokensForTokens",
+                [amount, amountOut, await wethSrc.getAddress(), await usdcSrc.getAddress(), await fiberRouterSrc.getAddress()]
             )
 
+            const refSigData = await getDummyReferralSig("dummy", fiberRouterSrc)
+
             const tx = fiberRouterSrc.swapAndCross(
-                weth,
+                wethSrc,
                 usdcSrc,
                 amount,
-                amount / 2n,
+                amountOut,
                 bridgeFee,
                 recipient,
                 chainId,
                 0,
+                refSigData,
                 swapRouter,
-                "0x268a380b" + routerCalldata.slice(2),
-                {value: bridgeFee}
+                routerCalldata
             )
 
             await expect(tx).to.changeTokenBalances(
-                weth,
-                [signer, fiberRouterSrc, poolSrc, swapRouter, poolDst, recipient],
-                [-amount, 0, 0, amount, 0, 0]
+                wethSrc,
+                [signer, fiberRouterSrc, poolSrc, swapRouter, poolDst, recipient, multiswapFeeRecipient],
+                [-amount, 0, 0, amount, 0, 0, 0]
             )
 
             await expect(tx).to.changeTokenBalances(
                 usdcSrc,
-                [signer, fiberRouterSrc, poolSrc, swapRouter, poolDst, recipient],
-                [0, 0, amount/2n, -amount/2n, 0, 0]
+                [signer, fiberRouterSrc, poolSrc, swapRouter, poolDst, recipient, multiswapFeeRecipient],
+                [0, 0, amountOut-platformFee, -amountOut, 0, 0, platformFee]
             )
 
             await expect(tx).to.changeTokenBalances(
                 usdcDst,
                 [signer, fiberRouterSrc, poolSrc, swapRouter, poolDst, recipient],
-                [0, 0, 0, 0, -amount/2n, amount/2n]
+                [0, 0, 0, 0, -amountOut+platformFee, amountOut-platformFee]
             )
 
             await expect(tx).to.changeTokenBalances(
@@ -207,70 +228,166 @@ describe("FiberRouter", function () {
                 [-bridgeFee, bridgeFee]
             )
         })
-    })
 
-    describe("CCIP", function () {
-        it("Sould initiate a cross chain transfer", async function () {
+        it("Should do a cross-chain transfer and swap on destination side", async () => {
+            const amountIn = 100000n
+            const bridgeAmount = amountIn - platformFee
+            const minAmountOut = 90000n
+            const frmBridgeFee = 1234n
+
+            await usdcSrc.approve(fiberRouterSrc, amountIn)
+
+            const dstRouterCalldata = swapRouter.interface.encodeFunctionData(
+                "swapExactTokensForTokens",
+                [bridgeAmount, minAmountOut, await usdcDst.getAddress(), await wethDst.getAddress(), recipient.address]
+            )
             
+            const dstData = abiCoder.encode(
+                ["address", "uint256", "address", "bytes"],
+                [await wethDst.getAddress(), minAmountOut, swapRouter.target, dstRouterCalldata]
+            )
 
-            const amount = 100n
-            const bridgeFee = 10n
-
-            await usdcSrc.approve(fiberRouterSrc, amount)
-            const tx = fiberRouterSrc.cross(
+            const refSigData = await getDummyReferralSig("dummy", fiberRouterSrc)
+            
+            const tx = fiberRouterSrc.crossAndSwap(
                 usdcSrc,
-                amount,
-                0,
+                amountIn,
+                frmBridgeFee,
                 recipient,
                 chainId,
                 0,
-                {value: bridgeFee}
+                refSigData,
+                dstData
             )
 
             await expect(tx).to.changeTokenBalances(
                 usdcSrc,
-                [signer, fiberRouterSrc, poolSrc, poolDst, recipient],
-                [-amount, 0, amount, 0, 0]
+                [signer, fiberRouterSrc, poolSrc, fiberRouterDst, poolDst, swapRouter, recipient, multiswapFeeRecipient],
+                [-amountIn, 0, bridgeAmount, 0, 0, 0, 0, platformFee]
+            )
+
+            await expect(tx).to.changeTokenBalances(
+                usdcDst,
+                [signer, fiberRouterSrc, poolSrc, fiberRouterDst, poolDst, swapRouter, recipient, multiswapFeeRecipient],
+                [0, 0, 0, 0, -bridgeAmount, bridgeAmount, 0, 0]
+            )
+
+            await expect(tx).to.changeTokenBalances(
+                wethDst,
+                [signer, fiberRouterSrc, poolSrc, fiberRouterDst, poolDst, swapRouter, recipient, multiswapFeeRecipient],
+                [0, 0, 0, 0, 0, -minAmountOut, minAmountOut, 0]
+            )
+
+            await expect(tx).to.changeTokenBalances(
+                frm,
+                [signer, portalFeeRecipient],
+                [-frmBridgeFee, frmBridgeFee]
             )
         })
 
-        it("Should swap tokens and initiate a cross chain transfer", async function () {
-            const amount = 100n
-            const bridgeFee = 10n
-            const abiCoder = AbiCoder.defaultAbiCoder()
+        it("should swap tokens, do a cross-chain transfer, and swap on destination side", async () => {
+            const amountIn = 100000n
+            const srcAmountOut = 90000n
+            const bridgeAmount = srcAmountOut - platformFee
+            const minAmountOut = 80000n
+            const frmBridgeFee = 1234n
 
-            await frm.approve(fiberRouterSrc, amount)
+            await wethSrc.approve(fiberRouterSrc, amountIn)
 
-            const routerCalldata = abiCoder.encode(
-                ["uint256", "uint256", "address", "address", "address"],
-                [amount, amount / 2n, await frm.getAddress(), await usdcSrc.getAddress(), await fiberRouterSrc.getAddress()]
+            const srcRouterCalldata = swapRouter.interface.encodeFunctionData(
+                "swapExactTokensForTokens",
+                [amountIn, srcAmountOut, await wethSrc.getAddress(), await usdcSrc.getAddress(), await fiberRouterSrc.getAddress()]
             )
 
-            const tx = fiberRouterSrc.swapAndCross(
-                frm,
+            const dstRouterCalldata = swapRouter.interface.encodeFunctionData(
+                "swapExactTokensForTokens",
+                [bridgeAmount, minAmountOut, await usdcDst.getAddress(), await wethDst.getAddress(), recipient.address]
+            )
+
+            const dstData = abiCoder.encode(
+                ["address", "uint256", "address", "bytes"],
+                [await wethDst.getAddress(), minAmountOut, swapRouter.target, dstRouterCalldata]
+            )
+
+            const refSigData = await getDummyReferralSig("dummy", fiberRouterSrc)
+
+            const tx = fiberRouterSrc.swapAndCrossAndSwap(
+                wethSrc,
                 usdcSrc,
-                amount,
-                amount / 2n,
-                0,
+                amountIn,
+                srcAmountOut,
+                frmBridgeFee,
                 recipient,
                 chainId,
-                1,
+                0,
+                refSigData,
                 swapRouter,
-                "0x268a380b" + routerCalldata.slice(2),
-                {value: bridgeFee}
+                srcRouterCalldata,
+                dstData
             )
 
             await expect(tx).to.changeTokenBalances(
-                frm,
-                [signer, fiberRouterSrc, poolSrc, swapRouter, poolDst, recipient],
-                [-amount, 0, 0, amount, 0, 0]
+                wethSrc,
+                [signer, fiberRouterSrc, poolSrc, fiberRouterDst, poolDst, swapRouter, recipient, multiswapFeeRecipient],
+                [-amountIn, 0, 0, 0, 0, amountIn, 0, 0]
             )
 
             await expect(tx).to.changeTokenBalances(
                 usdcSrc,
-                [signer, fiberRouterSrc, poolSrc, swapRouter, poolDst, recipient],
-                [0, 0, 0, -amount/2n, 0, amount/2n]
+                [signer, fiberRouterSrc, poolSrc, fiberRouterDst, poolDst, swapRouter, recipient, multiswapFeeRecipient],
+                [0, 0, bridgeAmount, 0, 0, -srcAmountOut, 0, platformFee]
+            )
+
+            await expect(tx).to.changeTokenBalances(
+                usdcDst,
+                [signer, fiberRouterSrc, poolSrc, fiberRouterDst, poolDst, swapRouter, recipient, multiswapFeeRecipient],
+                [0, 0, 0, 0, -bridgeAmount, bridgeAmount, 0, 0]
+            )
+
+            await expect(tx).to.changeTokenBalances(
+                wethDst,
+                [signer, fiberRouterSrc, poolSrc, fiberRouterDst, poolDst, swapRouter, recipient, multiswapFeeRecipient],
+                [0, 0, 0, 0, 0, -minAmountOut, minAmountOut, 0]
+            )
+
+            await expect(tx).to.changeTokenBalances(
+                frm,
+                [signer, portalFeeRecipient],
+                [-frmBridgeFee, frmBridgeFee]
             )
         })
     })
 })
+
+const getDummyReferralSig = async (referralCode:string, fiberRouterSrc:Contract) => {
+    const salt = "0x" + Buffer.from(randomBytes(32)).toString("hex")
+    const expiry = Math.floor(Date.now() / 1000) + 180
+    const fakeWallet = new Wallet(id(referralCode))
+    
+    const domain = {
+        name: "FEE_DISTRIBUTOR",
+        version: "000.001",
+        chainId,
+        verifyingContract: fiberRouterSrc.target as string
+    };
+
+    const types = {
+        ReferralSignature: [
+            { name: "salt", type: "bytes32" },
+            { name: "expiry", type: "uint256" }
+        ],
+    };
+
+    const values = {
+        salt,
+        expiry
+    };
+
+    const signature = await fakeWallet.signTypedData(domain, types, values);
+    
+    return {
+        salt,
+        expiry,
+        signature
+    }
+}

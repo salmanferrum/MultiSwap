@@ -22,16 +22,45 @@ abstract contract QuantumPortalApp is BaseRouter {
     function finalizeCross(
         address token,
         address recipient,
-        uint256 amount
+        uint256 bridgedAmount
     ) public onlyPortal {
         require(token != address(0), "FR: Token address cannot be zero");
         require(recipient != address(0), "FR: Payee address cannot be zero");
-        require(amount != 0, "FR: Amount must be greater than zero");
+        require(bridgedAmount != 0, "FR: Amount must be greater than zero");
         
         (uint256 sourceChainId, address sourceRouter,) = portal.msgSender();
         require(trustedRemoteRouters[sourceChainId] == sourceRouter, "FR: Router not trusted");
 
-        pool.finalizeCross(token, recipient, amount);
+        pool.finalizeCross(token, recipient, bridgedAmount);
+    }
+
+    function finalizeCrossAndSwap(
+        address foundryToken,
+        address recipient,
+        uint256 bridgedAmount,
+        bytes calldata dstSwapData
+    ) public onlyPortal {
+        require(foundryToken != address(0), "FR: Token address cannot be zero");
+        require(recipient != address(0), "FR: Payee address cannot be zero");
+        require(bridgedAmount != 0, "FR: Amount must be greater than zero");
+        
+        (uint256 sourceChainId, address sourceRouter,) = portal.msgSender();
+        require(trustedRemoteRouters[sourceChainId] == sourceRouter, "FR: Router not trusted");
+
+        pool.finalizeCross(foundryToken, address(this), bridgedAmount);
+
+        (address toToken, uint256 minAmountOut, address router, bytes memory dstRouterCalldata) = abi.decode(dstSwapData, (address, uint256, address, bytes));
+        (address settledToken, uint256 amountOut) = _swapOrSettle(
+            recipient,
+            foundryToken,
+            toToken,
+            bridgedAmount,
+            minAmountOut,
+            router,
+            dstRouterCalldata
+        );
+
+        emit FinalizeCrossAndSwap(settledToken, amountOut, recipient, sourceChainId);
     }
 
     /**
@@ -47,13 +76,17 @@ abstract contract QuantumPortalApp is BaseRouter {
         address recipient,
         address sourceFoundryToken,
         uint256 amount,
-        uint256 feeAmount
+        uint256 feeAmount,
+        bytes memory dstSwapData
     ) internal {
         _moveTokens(portal.feeToken(), msg.sender, portal.feeTarget(), feeAmount); // FRM
 
         address remoteFoundryToken = _getAndCheckRemoteFoundryToken(sourceFoundryToken, uint64(dstChainId));
 
-        bytes memory remoteCalldata = abi.encodeWithSelector(this.finalizeCross.selector, remoteFoundryToken, recipient, amount);
+        bytes memory remoteCalldata = dstSwapData.length == 0 ?
+            abi.encodeWithSelector(this.finalizeCross.selector, remoteFoundryToken, recipient, amount) :
+            abi.encodeWithSelector(this.finalizeCrossAndSwap.selector, remoteFoundryToken, recipient, amount, dstSwapData);
+
         portal.run(
             uint64(dstChainId), // dstChainId
             trustedRemoteRouters[dstChainId], // targetContractOnDstChain

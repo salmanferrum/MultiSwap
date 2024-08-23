@@ -18,4 +18,16 @@ contract SwapRouter {
         IERC20(outToken).transfer(to, amountOut);
         return amountOut;
     }
+
+    function failingSwapExactTokensForTokens(
+        uint amountIn,
+        uint amountOut,
+        address inToken,
+        address outToken,
+        address to
+    ) external returns (uint256) {
+        IERC20(inToken).transferFrom(msg.sender, address(this), amountIn);
+        IERC20(outToken).transfer(to, amountOut);
+        revert("MockSwapRouter: Failing swap");
+    }
 }

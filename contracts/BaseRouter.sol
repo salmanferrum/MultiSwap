@@ -11,7 +11,6 @@ import { Pool } from "./Pool.sol";
 abstract contract BaseRouter is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     address private constant NATIVE_CURRENCY = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
-    address payable public gasWallet;
     
     Pool public pool;
 
@@ -42,51 +41,28 @@ abstract contract BaseRouter is Ownable, ReentrancyGuard {
     event FinalizeCross(
         address token,
         uint256 amount,
-        address receipient,
+        address recipient,
         uint256 srcChainId
+    );
+
+    event FinalizeCrossAndSwap(
+        address settledToken,
+        uint256 amount,
+        address recipient,
+        uint256 srcChainId
+    );
+
+    event DstSwapFailureReason(
+        bytes reason
     );
 
     event RouterAndSelectorWhitelisted(address router, bytes4 selector);
     event RouterAndSelectorRemoved(address router, bytes selector);
 
     constructor(address _pool, address payable _gasWallet) {
-        require(_pool != address(0), "BaseRouter: Pool address cannot be zero");
-        require(_gasWallet != address(0), "BaseRouter: Gas wallet address cannot be zero");
+        require(_pool != address(0), "BR: Pool address cannot be zero");
+        require(_gasWallet != address(0), "BR: Gas wallet address cannot be zero");
         pool = Pool(_pool);
-        gasWallet = _gasWallet;
-    }
-
-    //#############################################################
-    //###################### USER FUNCTIONS #######################
-    //#############################################################
-    function cross(
-        address sourceFoundryToken,
-        uint256 amountIn,
-        uint256 feeAmount,
-        address recipient,
-        uint64 targetChainId,
-        uint256 swapType
-    ) external virtual payable;
-
-    function swapAndCross(
-        address fromToken,
-        address sourceFoundryToken,
-        uint256 amountIn,
-        uint256 minAmountOut,
-        uint256 feeAmount,
-        address recipient,
-        uint64 dstChainId,
-        uint256 swapType,
-        address router,
-        bytes calldata routerCalldata
-    ) external virtual payable;
-
-    function crossAndSwap() external virtual payable {
-        revert("BaseRouter: TODO");
-    }
-
-    function swapAndCrossAndSwap() external virtual payable {
-        revert("BaseRouter: TODO");
     }
 
     //#############################################################
@@ -97,27 +73,18 @@ abstract contract BaseRouter is Ownable, ReentrancyGuard {
      * @param _pool The fund manager
      */
     function setPool(address _pool) external onlyOwner {
-        require(_pool != address(0), "Swap pool address cannot be zero");
+        require(_pool != address(0), "BR: Swap pool address cannot be zero");
         pool = Pool(_pool);
-    }
-
-    /**
-     * @dev Sets the gas wallet address.
-     * @param _gasWallet The wallet which pays for the funds on withdrawal
-     */
-    function setGasFeeWallet(address payable _gasWallet) external onlyOwner {
-        require(_gasWallet != address(0), "FR: Gas Wallet address cannot be zero");
-        gasWallet = _gasWallet;
     }
 
     function addTrustedRemotes(
         uint256[] calldata remoteChainIds,
         address[] calldata remoteRouters
     ) external onlyOwner {
-        require(remoteChainIds.length == remoteRouters.length, "FR: Array length mismatch");
+        require(remoteChainIds.length == remoteRouters.length, "BR: Array length mismatch");
         for (uint256 i = 0; i < remoteChainIds.length; i++) {
-            require(remoteChainIds[i] != 0, "FR: Chain ID cannot be zero");
-            require(remoteRouters[i] != address(0), "FR: Remote fiber router address cannot be zero");
+            require(remoteChainIds[i] != 0, "BR: Chain ID cannot be zero");
+            require(remoteRouters[i] != address(0), "BR: Remote fiber router address cannot be zero");
             trustedRemoteRouters[remoteChainIds[i]] = remoteRouters[i];
         }
     }
@@ -133,16 +100,16 @@ abstract contract BaseRouter is Ownable, ReentrancyGuard {
         uint256[] calldata remoteChainIds,
         address[] calldata remoteTokens
     ) external onlyOwner {
-        require(sourceTokens.length == remoteChainIds.length && sourceTokens.length == remoteTokens.length, "FR: Array length mismatch");
+        require(sourceTokens.length == remoteChainIds.length && sourceTokens.length == remoteTokens.length, "BR: Array length mismatch");
         for (uint256 i = 0; i < sourceTokens.length; i++) {
-            require(sourceTokens[i] != address(0), "FR: Chain ID cannot be zero");
-            require(remoteTokens[i] != address(0), "FR: Remote token address cannot be zero");
+            require(sourceTokens[i] != address(0), "BR: Chain ID cannot be zero");
+            require(remoteTokens[i] != address(0), "BR: Remote token address cannot be zero");
             tokenPaths[sourceTokens[i]][remoteChainIds[i]] = remoteTokens[i];
         }
     }
 
     function removeTokenPaths(address[] calldata sourceTokens, uint256[] calldata remoteChainIds) external onlyOwner {
-        require(sourceTokens.length == remoteChainIds.length, "FR: Array length mismatch");
+        require(sourceTokens.length == remoteChainIds.length, "BR: Array length mismatch");
         for (uint256 i = 0; i < sourceTokens.length; i++) {
             delete tokenPaths[sourceTokens[i]][remoteChainIds[i]];
         }
@@ -222,6 +189,55 @@ abstract contract BaseRouter is Ownable, ReentrancyGuard {
         return amount;
     }
 
+    function _swap(
+        address targetAddress,
+        address fromToken,
+        address toToken,
+        uint256 amountIn,
+        uint256 minAmountOut,
+        address router,
+        bytes memory data
+    ) internal returns (uint256) {
+        require(isAllowListed(router, data), "BR: Router and selector not whitelisted");
+        _approveExternalContract(fromToken, router, amountIn);
+        uint256 balanceBefore = _getBalance(toToken, targetAddress);
+        _makeRouterCall(router, data);
+        uint256 amountOut = _getBalance(toToken, targetAddress) - balanceBefore;
+
+        require(amountOut >= minAmountOut, "BR: Slippage check failed");
+
+        return amountOut;
+    }
+
+    function _swapOrSettle(
+        address targetAddress,
+        address fromToken,
+        address toToken,
+        uint256 amountIn,
+        uint256 minAmountOut,
+        address router,
+        bytes memory dstRouterCalldata
+    ) internal returns (address, uint256) {
+        require(isAllowListed(router, dstRouterCalldata), "BR: Router and selector not whitelisted");
+        _approveExternalContract(fromToken, router, amountIn);
+        uint256 balanceBefore = _getBalance(toToken, targetAddress);
+        (bool success, bytes memory returnData) = router.call(dstRouterCalldata);
+        uint256 amountOut = _getBalance(toToken, targetAddress) - balanceBefore;
+
+        if (!success) { // Settle in foundry token
+            require(amountOut == 0, "BR: Amount out should be zero"); // Sanity check. This should always be zero if router swap fails
+            IERC20(fromToken).safeTransfer(targetAddress, amountIn);
+            emit DstSwapFailureReason(returnData);
+            return (fromToken, amountIn);
+        } else { // Succesful swap
+            // This should always pass if the router swap is successful, since the 3rd party router should handle slippage
+            // Resort to manual settlement if this fails
+            require(amountOut >= minAmountOut, "BR: Slippage check failed");
+
+            return (toToken, amountOut);
+        }
+    }
+
     function _makeRouterCall(address router, bytes memory data) private {
         (bool success, bytes memory returnData) = router.call(data);
         if (!success) {
@@ -231,34 +247,14 @@ abstract contract BaseRouter is Ownable, ReentrancyGuard {
                     revert(add(32, returnData), returnDataSize)
                 }
             } else {
-                revert("FR: Call to router failed");
+                revert("BR: Call to router failed");
             }
         }
     }
 
-    function _swapAndCheckSlippage(
-        address targetAddress,
-        address fromToken,
-        address toToken,
-        uint256 amountIn,
-        uint256 minAmountOut,
-        address router,
-        bytes memory data
-    ) internal returns (uint256) {
-        require(isAllowListed(router, data), "FR: Router and selector not whitelisted");
-        _approveExternalContract(fromToken, router, amountIn);
-        uint256 balanceBefore = _getBalance(toToken, targetAddress);
-        _makeRouterCall(router, data);
-        uint256 amountOut = _getBalance(toToken, targetAddress) - balanceBefore;
-
-        require(amountOut >= minAmountOut, "FR: Slippage check failed");
-
-        return amountOut;
-    }
-
     function _getAndCheckRemoteFoundryToken(address token, uint64 targetChainId) internal view returns (address) {
         address remoteFoundryToken = tokenPaths[token][targetChainId];
-        require(remoteFoundryToken != address(0), "FR: Token path not found");
+        require(remoteFoundryToken != address(0), "BR: Token path not found");
         return remoteFoundryToken;
     }
 }

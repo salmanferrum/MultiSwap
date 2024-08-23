@@ -1,5 +1,5 @@
 import hre from "hardhat";
-import addresses from "../constants/addresses.json";
+import addresses from "../../constants/addresses.json";
 
 async function main() {
     const thisNetwork = hre.network.name;

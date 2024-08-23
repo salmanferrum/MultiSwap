@@ -1,13 +1,10 @@
 import axios from "axios";
 
-
-
-
 async function main() {
 
     let config = {
         headers: {
-            Authorization: `Bearer k5YhC6RsrmL96KoqpKJTy9AuRBH61sRg`,
+            Authorization: `Bearer bearer-token-here`,
         },
     };
     

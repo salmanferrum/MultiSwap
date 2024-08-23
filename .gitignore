@@ -14,4 +14,5 @@ artifacts-zk
 cache-zk
 deployments-zk
 era_test_node.log
+ignition/deployments
 .DS_Store

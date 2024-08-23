@@ -20,7 +20,6 @@ async function main() {
     writeJsonToFile(filePath, addresses);
 }
 
-
 main()
 .then(() => process.exit(0))
 .catch((error) => {
