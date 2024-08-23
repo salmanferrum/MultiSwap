@@ -5,10 +5,11 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { BaseRouter } from "./BaseRouter.sol";
 import { FeeDistributor } from "./FeeDistributor.sol";
 import { CCIPApp } from "./CCIPApp.sol";
+import { StargateComposer } from "./StargateComposer.sol";
 import { QuantumPortalApp } from "./QuantumPortalApp.sol";
 
 
-contract FiberRouter is FeeDistributor, QuantumPortalApp, CCIPApp {
+contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIPApp {
 
     constructor(
         address pool,
@@ -24,6 +25,7 @@ contract FiberRouter is FeeDistributor, QuantumPortalApp, CCIPApp {
         address sourceFoundryToken,
         uint256 amountIn,
         uint256 feeAmount,
+        address sender,
         address recipient,
         uint64 dstChainId,
         uint256 swapType,
@@ -33,6 +35,7 @@ contract FiberRouter is FeeDistributor, QuantumPortalApp, CCIPApp {
             sourceFoundryToken,
             amountIn,
             feeAmount,
+            sender,
             recipient,
             dstChainId,
             swapType,
@@ -45,6 +48,7 @@ contract FiberRouter is FeeDistributor, QuantumPortalApp, CCIPApp {
         address sourceFoundryToken,
         uint256 amountIn,
         uint256 feeAmount,
+        address sender,
         address recipient,
         uint64 dstChainId,
         uint256 swapType,
@@ -55,6 +59,7 @@ contract FiberRouter is FeeDistributor, QuantumPortalApp, CCIPApp {
             sourceFoundryToken,
             amountIn,
             feeAmount,
+            sender,
             recipient,
             dstChainId,
             swapType,
@@ -129,6 +134,7 @@ contract FiberRouter is FeeDistributor, QuantumPortalApp, CCIPApp {
         address sourceFoundryToken,
         uint256 amountIn,
         uint256 feeAmount,
+        address sender,
         address recipient,
         uint64 dstChainId,
         uint256 swapType,
@@ -146,6 +152,8 @@ contract FiberRouter is FeeDistributor, QuantumPortalApp, CCIPApp {
             _bridgeWithPortal(dstChainId, recipient, sourceFoundryToken, amountIn, feeAmount, dstData);
         } else if (swapType == 1) {
             _bridgeWithCcip(dstChainId, sourceFoundryToken, amountIn, abi.encode(recipient));
+        } else if (swapType == 2) {
+            _bridgeWithStargate(amountIn, sender, recipient, dstChainId);
         } else {
             revert("FR: Invalid swap type");
         }
