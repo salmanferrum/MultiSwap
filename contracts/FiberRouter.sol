@@ -5,10 +5,11 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { BaseRouter } from "./BaseRouter.sol";
 import { FeeDistributor } from "./FeeDistributor.sol";
 import { CCIPApp } from "./CCIPApp.sol";
+import { StargateComposer } from "./StargateComposer.sol";
 import { QuantumPortalApp } from "./QuantumPortalApp.sol";
 
 
-contract FiberRouter is FeeDistributor, QuantumPortalApp, CCIPApp {
+contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIPApp {
 
     constructor(
         address pool,
@@ -146,6 +147,8 @@ contract FiberRouter is FeeDistributor, QuantumPortalApp, CCIPApp {
             _bridgeWithPortal(dstChainId, recipient, sourceFoundryToken, amountIn, feeAmount, dstData);
         } else if (swapType == 1) {
             _bridgeWithCcip(dstChainId, sourceFoundryToken, amountIn, abi.encode(recipient));
+        } else if (swapType == 2) {
+            _bridgeWithStargate(amountIn, msg.sender, recipient, dstChainId);
         } else {
             revert("FR: Invalid swap type");
         }
