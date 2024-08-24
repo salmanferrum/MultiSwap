@@ -7,7 +7,6 @@ import { FeeDistributor } from "./FeeDistributor.sol";
 import { CCIPApp } from "./CCIPApp.sol";
 import { StargateComposer } from "./StargateComposer.sol";
 import { QuantumPortalApp } from "./QuantumPortalApp.sol";
-import "hardhat/console.sol";
 
 
 contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIPApp {

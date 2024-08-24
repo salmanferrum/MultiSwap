@@ -209,6 +209,20 @@ abstract contract BaseRouter is Ownable, ReentrancyGuard {
         return amountOut;
     }
 
+    /**
+     * @dev The require statement in the else block should always pass if the router swap is successful, since the
+     *      3rd party router should handle slippage. The minAmountOut will be the same in both the dstRouterCalldata
+     *      and the value passed in here, as we can't regenerate the calldata. Resort to manual settlement if this fails
+     * @param targetAddress Address where the outgoing tokens go to, straight from the 3rd party router
+     * @param fromToken from token
+     * @param toToken to token
+     * @param amountIn amount in
+     * @param minAmountOut minimum amount out for slippage check
+     * @param router 3rd party swap router
+     * @param dstRouterCalldata calldata for the 3rd party token swap
+     * @return Address of the settled token
+     * @return Amount of the settled token
+     */
     function _swapOrSettle(
         address targetAddress,
         address fromToken,
@@ -230,8 +244,6 @@ abstract contract BaseRouter is Ownable, ReentrancyGuard {
             emit DstSwapFailureReason(returnData);
             return (fromToken, amountIn);
         } else { // Succesful swap
-            // This should always pass if the router swap is successful, since the 3rd party router should handle slippage
-            // Resort to manual settlement if this fails
             require(amountOut >= minAmountOut, "BR: Slippage check failed");
 
             return (toToken, amountOut);

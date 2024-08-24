@@ -2,7 +2,7 @@ import { loadFixture } from "@nomicfoundation/hardhat-toolbox/network-helpers";
 import { expect } from "chai";
 import { AbiCoder, Contract, id, randomBytes, Wallet, ZeroAddress } from "ethers";
 import hre from "hardhat";
-import MultiswapModule from "../ignition/modules/MultiSwap";
+import MultiswapModule from "../ignition/modules/Test";
 
 
 const chainId = 31337

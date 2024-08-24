@@ -2,7 +2,7 @@ import { loadFixture } from "@nomicfoundation/hardhat-toolbox/network-helpers";
 import { expect } from "chai";
 import { AbiCoder, Contract, id, randomBytes, Wallet } from "ethers";
 import hre from "hardhat";
-import MultiswapModule from "../ignition/modules/MultiSwap";
+import MultiswapModule from "../ignition/modules/Test";
 
 
 const chainId = 31337
@@ -34,7 +34,6 @@ describe("FiberRouter", () => {
 
         quantumPortal = await hre.ethers.deployContract("QuantumPortal")
         swapRouter = await hre.ethers.deployContract("SwapRouter")
-        interchainTokenService = await hre.ethers.deployContract("InterchainTokenService")
         usdcSrc = await hre.ethers.deployContract("Token")
         usdcDst = await hre.ethers.deployContract("Token")
         frm = await hre.ethers.deployContract("Token")
@@ -60,7 +59,6 @@ describe("FiberRouter", () => {
             parameters: {
                 MultiSwap: {
                     quantumPortal: await quantumPortal.getAddress(),
-                    interchainTokenService: await interchainTokenService.getAddress(),
                     ccipRouter: config.sourceRouter_
                 }
             }
