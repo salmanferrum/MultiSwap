@@ -141,43 +141,50 @@ describe("FiberRouter", () => {
     })
 
     describe("Quantum Portal", () => {
-        it("Should transfer full platform fee to fee wallet if invalid referral code used", async () => {
+        it("Should distribute full platform fee to fee wallet if no referral signature data is passed", async () => {
             const amount = 100000n
             const frmBridgeFee = 1234n
-            const salt = "0x" + Buffer.from(randomBytes(32)).toString("hex")
-            const expiry = Math.floor(Date.now() / 1000) + 60
+
+            await usdcSrc.approve(fiberRouterSrc, amount)
+            
+            const refSigData = "0x"
+            
+            const tx = fiberRouterSrc.cross(
+                usdcSrc,
+                amount,
+                frmBridgeFee,
+                recipient,
+                chainId,
+                0,
+                refSigData
+            )
+
+            await expect(tx).to.changeTokenBalances(
+                usdcSrc,
+                [signer, fiberRouterSrc, poolSrc, poolDst, recipient, multiswapFeeRecipient, referralRecipient],
+                [-amount, 0, amount-platformFee, 0, 0, platformFee, 0]
+            )
+
+            await expect(tx).to.changeTokenBalances(
+                usdcDst,
+                [signer, fiberRouterDst, poolSrc, poolDst, recipient, multiswapFeeRecipient],
+                [0, 0, 0, -amount+platformFee, amount-platformFee, 0]
+            )
+
+            await expect(tx).to.changeTokenBalances(
+                frm,
+                [signer, portalFeeRecipient, multiswapFeeRecipient, referralRecipient],
+                [-frmBridgeFee, frmBridgeFee, 0, 0]
+            )
+        })
+
+        it("Should distribute full platform fee to fee wallet if invalid referral code used", async () => {
+            const amount = 100000n
+            const frmBridgeFee = 1234n
 
             await usdcSrc.approve(fiberRouterSrc, amount)
 
-            const referralCode = "invalid-referral-code"
-            const fakeWallet = new Wallet(id(referralCode))
-
-            const domain = {
-                name: "FEE_DISTRIBUTOR",
-                version: "000.001",
-                chainId,
-                verifyingContract: fiberRouterSrc.target
-            };
-
-            const types = {
-                ReferralSignature: [
-                    { name: "salt", type: "bytes32" },
-                    { name: "expiry", type: "uint256" }
-                ],
-            };
-
-            const values = {
-                salt,
-                expiry
-            };
-
-            const signature = await fakeWallet.signTypedData(domain, types, values);
-            
-            const refSigData = {
-                salt,
-                expiry,
-                signature
-            }
+            const refSigData = await getDummyReferralSig("invalid-referral-code", fiberRouterSrc)
             
             const tx = fiberRouterSrc.cross(
                 usdcSrc,
@@ -211,12 +218,12 @@ describe("FiberRouter", () => {
         it("Should correctly distribute fees with valid referral code", async () => {
             const amount = 100000n
             const frmBridgeFee = 1234n
-            const salt = "0x" + Buffer.from(randomBytes(32)).toString("hex")
-            const expiry = Math.floor(Date.now() / 1000) + 60
 
             await usdcSrc.approve(fiberRouterSrc, amount)
 
             const referralCode = "valid-referral-code"
+            
+            // Add referral data
             const fakeWallet = new Wallet(id(referralCode))
             const referralCodePublicKey = fakeWallet.address.toLowerCase()
             const referralDiscount = 20n // 20% discount
@@ -228,32 +235,7 @@ describe("FiberRouter", () => {
                 referralCodePublicKey
             )
 
-            const domain = {
-                name: "FEE_DISTRIBUTOR",
-                version: "000.001",
-                chainId,
-                verifyingContract: fiberRouterSrc.target
-            };
-
-            const types = {
-                ReferralSignature: [
-                    { name: "salt", type: "bytes32" },
-                    { name: "expiry", type: "uint256" }
-                ],
-            };
-
-            const values = {
-                salt,
-                expiry
-            };
-
-            const signature = await fakeWallet.signTypedData(domain, types, values);
-            
-            const refSigData = {
-                salt,
-                expiry,
-                signature
-            }
+            const refSigData = await getDummyReferralSig(referralCode, fiberRouterSrc)
             
             const tx = fiberRouterSrc.cross(
                 usdcSrc,
@@ -289,3 +271,33 @@ describe("FiberRouter", () => {
         })
     })
 })
+
+const getDummyReferralSig = async (referralCode:string, fiberRouterSrc:Contract) => {
+    const salt = "0x" + Buffer.from(randomBytes(32)).toString("hex")
+    const expiry = Math.floor(Date.now() / 1000) + 180
+    const fakeWallet = new Wallet(id(referralCode))
+    
+    const domain = {
+        name: "FEE_DISTRIBUTOR",
+        version: "000.001",
+        chainId,
+        verifyingContract: fiberRouterSrc.target as string
+    };
+
+    const types = {
+        ReferralSignature: [
+            { name: "salt", type: "bytes32" },
+            { name: "expiry", type: "uint256" }
+        ],
+    };
+
+    const values = {
+        salt,
+        expiry
+    };
+
+    const signature = await fakeWallet.signTypedData(domain, types, values);
+    
+    const abiCoder = new AbiCoder()
+    return abiCoder.encode(["bytes32", "uint256", "bytes"], [salt, expiry, signature])
+}

@@ -28,7 +28,7 @@ contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIP
         address recipient,
         uint64 dstChainId,
         uint256 swapType,
-        ReferralSignature memory refSigData
+        bytes memory refSigData
     ) external payable {
         _cross(
             sourceFoundryToken,
@@ -49,7 +49,7 @@ contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIP
         address recipient,
         uint64 dstChainId,
         uint256 swapType,
-        ReferralSignature memory refSigData,
+        bytes memory refSigData,
         bytes memory dstData
     ) external payable {
         _cross(
@@ -73,7 +73,7 @@ contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIP
         address recipient,
         uint64 dstChainId,
         uint256 swapType,
-        ReferralSignature memory refSigData,
+        bytes memory refSigData,
         address router,
         bytes calldata srcRouterCalldata
     ) external payable {
@@ -102,7 +102,7 @@ contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIP
         address recipient,
         uint64 dstChainId,
         uint256 swapType,
-        ReferralSignature memory refSigData,
+        bytes memory refSigData,
         address router,
         bytes calldata srcRouterCalldata,
         bytes memory dstData
@@ -133,7 +133,7 @@ contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIP
         address recipient,
         uint64 dstChainId,
         uint256 swapType,
-        ReferralSignature memory refSigData,
+        bytes memory refSigData,
         bytes memory dstData
     ) internal {
         require(amountIn > 0, "FR: Amount in must be greater than zero");
@@ -164,7 +164,7 @@ contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIP
         address recipient,
         uint64 dstChainId,
         uint256 swapType,
-        ReferralSignature memory refSigData,
+        bytes memory refSigData,
         address router,
         bytes calldata srcRouterCalldata,
         bytes memory dstData

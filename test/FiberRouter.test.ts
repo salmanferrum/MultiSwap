@@ -144,7 +144,7 @@ describe("FiberRouter", () => {
             const frmBridgeFee = 1234n
 
             await usdcSrc.approve(fiberRouterSrc, amount)
-            const refSigData = await getDummyReferralSig("dummy", fiberRouterSrc)
+            const refSigData = "0x"
 
             const tx = fiberRouterSrc.cross(
                 usdcSrc,
@@ -186,7 +186,7 @@ describe("FiberRouter", () => {
                 [amount, amountOut, await wethSrc.getAddress(), await usdcSrc.getAddress(), await fiberRouterSrc.getAddress()]
             )
 
-            const refSigData = await getDummyReferralSig("dummy", fiberRouterSrc)
+            const refSigData = "0x"
 
             const tx = fiberRouterSrc.swapAndCross(
                 wethSrc,
@@ -245,7 +245,7 @@ describe("FiberRouter", () => {
                 [await wethDst.getAddress(), minAmountOut, swapRouter.target, dstRouterCalldata]
             )
 
-            const refSigData = await getDummyReferralSig("dummy", fiberRouterSrc)
+            const refSigData = "0x"
             
             const tx = fiberRouterSrc.crossAndSwap(
                 usdcSrc,
@@ -307,7 +307,7 @@ describe("FiberRouter", () => {
                 [await wethDst.getAddress(), minAmountOut, swapRouter.target, dstRouterCalldata]
             )
 
-            const refSigData = await getDummyReferralSig("dummy", fiberRouterSrc)
+            const refSigData = "0x"
 
             const tx = fiberRouterSrc.swapAndCrossAndSwap(
                 wethSrc,
@@ -364,7 +364,7 @@ describe("FiberRouter", () => {
             const qpFee = 0n
             const usdc = usdcSrc
 
-            const refSigData = await getDummyReferralSig("dummy", fiberRouterSrc)
+            const refSigData = "0x"
             await usdc.approve(fiberRouterSrc, amountIn)
             const tx = fiberRouterSrc.cross(
                 usdc,
@@ -397,7 +397,7 @@ describe("FiberRouter", () => {
                 [amountIn, amountOut, await wethSrc.getAddress(), await usdc.getAddress(), await fiberRouterSrc.getAddress()]
             )
             
-            const refSigData = await getDummyReferralSig("dummy", fiberRouterSrc)
+            const refSigData = "0x"
             
             await wethSrc.approve(fiberRouterSrc, million)
 
@@ -447,7 +447,7 @@ describe("FiberRouter", () => {
                 [await wethDst.getAddress(), dstAmountOut, swapRouter.target, dstRouterCalldata]
             )
 
-            const refSigData = await getDummyReferralSig("dummy", fiberRouterSrc)
+            const refSigData = "0x"
 
             await usdc.approve(fiberRouterSrc, amountIn)
 
@@ -500,7 +500,7 @@ describe("FiberRouter", () => {
                 [await wethDst.getAddress(), dstAmountOut, swapRouter.target, dstRouterCalldata]
             )
 
-            const refSigData = await getDummyReferralSig("dummy", fiberRouterSrc)
+            const refSigData = "0x"
 
             await wethSrc.approve(fiberRouterSrc, amountIn)
 
@@ -542,36 +542,3 @@ describe("FiberRouter", () => {
         })
     })
 })
-
-const getDummyReferralSig = async (referralCode:string, fiberRouterSrc:Contract) => {
-    const salt = "0x" + Buffer.from(randomBytes(32)).toString("hex")
-    const expiry = Math.floor(Date.now() / 1000) + 180
-    const fakeWallet = new Wallet(id(referralCode))
-    
-    const domain = {
-        name: "FEE_DISTRIBUTOR",
-        version: "000.001",
-        chainId,
-        verifyingContract: fiberRouterSrc.target as string
-    };
-
-    const types = {
-        ReferralSignature: [
-            { name: "salt", type: "bytes32" },
-            { name: "expiry", type: "uint256" }
-        ],
-    };
-
-    const values = {
-        salt,
-        expiry
-    };
-
-    const signature = await fakeWallet.signTypedData(domain, types, values);
-    
-    return {
-        salt,
-        expiry,
-        signature
-    }
-}
