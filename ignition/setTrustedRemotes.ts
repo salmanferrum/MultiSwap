@@ -12,7 +12,7 @@ async function main() {
     const currentNetworkInfo = addresses.networks[thisNetwork];
     const fiberRouterAddress = currentNetworkInfo.deployments.fiberRouter;
     const poolAddress = currentNetworkInfo.deployments.pool;
-    const fiberRouter = await hre.ethers.getContractAt("FiberRouterV2", fiberRouterAddress);
+    const fiberRouter = await hre.ethers.getContractAt("FiberRouter", fiberRouterAddress);
     const pool = await hre.ethers.getContractAt("Pool", poolAddress);
 
     const chainIds: number[] = [];

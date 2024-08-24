@@ -6,6 +6,7 @@ import { BaseRouter } from "./BaseRouter.sol";
 import { FeeDistributor } from "./FeeDistributor.sol";
 import { CCIPApp } from "./CCIPApp.sol";
 import { QuantumPortalApp } from "./QuantumPortalApp.sol";
+import "hardhat/console.sol";
 
 
 contract FiberRouter is FeeDistributor, QuantumPortalApp, CCIPApp {
@@ -145,7 +146,8 @@ contract FiberRouter is FeeDistributor, QuantumPortalApp, CCIPApp {
             amountIn = _transferToPool(sourceFoundryToken, address(this), amountIn);
             _bridgeWithPortal(dstChainId, recipient, sourceFoundryToken, amountIn, feeAmount, dstData);
         } else if (swapType == 1) {
-            _bridgeWithCcip(dstChainId, sourceFoundryToken, amountIn, abi.encode(recipient));
+            dstData = dstData.length > 0 ? _concatDstDataToRecipient(recipient, dstData) : abi.encode(recipient);
+            _bridgeWithCcip(dstChainId, sourceFoundryToken, amountIn, dstData);
         } else {
             revert("FR: Invalid swap type");
         }
@@ -183,7 +185,8 @@ contract FiberRouter is FeeDistributor, QuantumPortalApp, CCIPApp {
             amountOut = _transferToPool(sourceFoundryToken, address(this), amountOut);
             _bridgeWithPortal(dstChainId, recipient, sourceFoundryToken, amountOut, feeAmount, dstData);
         } else if (swapType == 1) {
-            _bridgeWithCcip(dstChainId, sourceFoundryToken, amountOut, abi.encode(recipient));
+            dstData = dstData.length > 0 ? _concatDstDataToRecipient(recipient, dstData) : abi.encode(recipient);
+            _bridgeWithCcip(dstChainId, sourceFoundryToken, amountOut, dstData);
         } else {
             revert("FR: Invalid swap type");
         }

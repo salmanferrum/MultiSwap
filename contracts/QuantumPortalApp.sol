@@ -23,7 +23,7 @@ abstract contract QuantumPortalApp is BaseRouter {
         address token,
         address recipient,
         uint256 bridgedAmount
-    ) public onlyPortal {
+    ) external onlyPortal {
         require(token != address(0), "FR: Token address cannot be zero");
         require(recipient != address(0), "FR: Payee address cannot be zero");
         require(bridgedAmount != 0, "FR: Amount must be greater than zero");
@@ -39,7 +39,7 @@ abstract contract QuantumPortalApp is BaseRouter {
         address recipient,
         uint256 bridgedAmount,
         bytes calldata dstSwapData
-    ) public onlyPortal {
+    ) external onlyPortal {
         require(foundryToken != address(0), "FR: Token address cannot be zero");
         require(recipient != address(0), "FR: Payee address cannot be zero");
         require(bridgedAmount != 0, "FR: Amount must be greater than zero");
