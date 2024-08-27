@@ -1,11 +1,13 @@
 import { ethers } from "hardhat";
 import hre from "hardhat";
-import { ContractTransactionResponse } from "ethers";
+import { ContractTransaction } from "ethers";
 import addresses from "../constants/addresses.json";
+import { id } from "ethers";  // Import 'id' directly from 'ethers'
 
 async function main() {
   const currentNetwork = hre.network.name;
   const networkAddresses = addresses.networks[currentNetwork];
+  const signer = await hre.ethers.provider.getSigner();
 
   // Load the deployed contract addresses from the output of your deployment module
   const poolAddress = networkAddresses.deployments.pool;
@@ -36,18 +38,18 @@ async function main() {
   }
 
   // Set platform fee
-  const platformFee = 500000; // Example platform fee 0.5 USDC based on the decimals of the network, set as needed
+  const platformFee = 10000; // Example platform fee 0.1 USDC based on the decimals of the network, set as needed
   await setPlatformFee(fiberRouter, platformFee);
 
-  // Set platform feeWallet
-  const feeWallet = addresses.feeWallet; 
+//   // Set platform feeWallet
+  const feeWallet = "0x2F169deC5B55420864967f28D545A2898c71b28B"; 
   await setFeeWallet(fiberRouter, feeWallet);
 
-  // Allow Stargate for other networks
-  await allowStgTargets(fiberRouter);
+// Allow Stargate for other networks
+   await allowStgTargets(fiberRouter);
 
-//   // Add referral
-//   await addReferral(fiberRouter);
+// Add referral
+   await addReferral(fiberRouter, signer);
 
   console.log("Post-deployment actions completed successfully.");
 }
@@ -129,30 +131,37 @@ async function allowStgTargets(fiberRouter: any) {
     }
   }
 }
+async function addReferral(fiberRouter: any, signer: any) {
+    // Referral details
+    const referralCode = "valid-referral-code"; // Example referral code
+    const referralRecipient = "0x2F169deC5B55420864967f28D545A2898c71b28B"; // Referral recipient address
+    const referralShare = 5; // 40% fee share
+    const referralDiscount = 5; // 20% discount
 
-async function addReferral(fiberRouter: any) {
-    const referral = "0xYourReferralAddressHere"; // Replace with actual referral address
-    const referralShare = 10; // Example referral share
-    const referralDiscount = 5; // Example referral discount
-    const publicReferralCode = "0xYourPublicReferralCodeHere"; // Replace with actual public referral code
-  
-    console.log("\n##### Adding referral to FiberRouter #####");
-  
+    // Generate deterministic public key from the signer's wallet
+    const referralCodePublicKey = signer.address.toLowerCase();
+    console.log(`Signer's address used as public referral code: ${referralCodePublicKey}`);
+
     try {
       const tx = await fiberRouter.addReferral(
-        referral,
-        referralShare,
-        referralDiscount,
-        publicReferralCode
+          referralRecipient,
+          referralShare,
+          referralDiscount,
+          referralCodePublicKey
       );
       await tx.wait();
       console.log(`addReferral transaction completed: ${tx.hash}`);
-    } catch (error) {
+  } catch (error) {
       console.error("Failed to add referral:", error);
-    }
   }
+}
 
-const sendTx = async (txResponse: Promise<ContractTransactionResponse>, successMessage?: string) => {
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
+
+const sendTx = async (txResponse: Promise<ContractTransaction>, successMessage?: string) => {
   const receipt = await (await txResponse).wait();
   await delay(100);
   if (receipt?.status == 1) {
