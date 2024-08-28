@@ -16,7 +16,6 @@ abstract contract FeeDistributor is EIP712, Ownable {
     address public feeWallet;
     uint256 public platformFee; // Platform fee as a fixed amount 
 
-    mapping(address => bool) public signers;
     mapping(bytes32 => bool) public usedSalt;
     mapping(address => ReferralData) public referrals;
 
@@ -71,6 +70,12 @@ abstract contract FeeDistributor is EIP712, Ownable {
         referrals[publicReferralCode] = ReferralData(referral, referralShare, referralDiscount);
     }
 
+   // Function to remove a referral
+    function removeReferral(address publicReferralCode) external onlyOwner {
+        require(referrals[publicReferralCode].referral != address(0), "FD: Referral does not exist");
+        delete referrals[publicReferralCode];
+    }
+    
     //#############################################################
     //################ INTERNAL LOGIC FUNCTIONS ###################
     //#############################################################
