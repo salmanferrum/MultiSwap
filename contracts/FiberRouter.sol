@@ -28,7 +28,7 @@ contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIP
         address recipient,
         uint64 dstChainId,
         uint256 swapType,
-        ReferralSignature memory refSigData
+        bytes memory refSigData
     ) external payable {
         _cross(
             sourceFoundryToken,
@@ -49,7 +49,7 @@ contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIP
         address recipient,
         uint64 dstChainId,
         uint256 swapType,
-        ReferralSignature memory refSigData,
+        bytes memory refSigData,
         bytes memory dstData
     ) external payable {
         _cross(
@@ -73,7 +73,7 @@ contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIP
         address recipient,
         uint64 dstChainId,
         uint256 swapType,
-        ReferralSignature memory refSigData,
+        bytes memory refSigData,
         address router,
         bytes calldata srcRouterCalldata
     ) external payable {
@@ -102,7 +102,7 @@ contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIP
         address recipient,
         uint64 dstChainId,
         uint256 swapType,
-        ReferralSignature memory refSigData,
+        bytes memory refSigData,
         address router,
         bytes calldata srcRouterCalldata,
         bytes memory dstData
@@ -133,7 +133,7 @@ contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIP
         address recipient,
         uint64 dstChainId,
         uint256 swapType,
-        ReferralSignature memory refSigData,
+        bytes memory refSigData,
         bytes memory dstData
     ) internal {
         require(amountIn > 0, "FR: Amount in must be greater than zero");
@@ -146,7 +146,8 @@ contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIP
             amountIn = _transferToPool(sourceFoundryToken, address(this), amountIn);
             _bridgeWithPortal(dstChainId, recipient, sourceFoundryToken, amountIn, feeAmount, dstData);
         } else if (swapType == 1) {
-            _bridgeWithCcip(dstChainId, sourceFoundryToken, amountIn, abi.encode(recipient));
+            dstData = dstData.length > 0 ? _concatDstDataToRecipient(recipient, dstData) : abi.encode(recipient);
+            _bridgeWithCcip(dstChainId, sourceFoundryToken, amountIn, dstData);
         } else if (swapType == 2) {
             _bridgeWithStargate(amountIn, msg.sender, recipient, dstChainId);
         } else {
@@ -163,7 +164,7 @@ contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIP
         address recipient,
         uint64 dstChainId,
         uint256 swapType,
-        ReferralSignature memory refSigData,
+        bytes memory refSigData,
         address router,
         bytes calldata srcRouterCalldata,
         bytes memory dstData
@@ -186,7 +187,8 @@ contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIP
             amountOut = _transferToPool(sourceFoundryToken, address(this), amountOut);
             _bridgeWithPortal(dstChainId, recipient, sourceFoundryToken, amountOut, feeAmount, dstData);
         } else if (swapType == 1) {
-            _bridgeWithCcip(dstChainId, sourceFoundryToken, amountOut, abi.encode(recipient));
+            dstData = dstData.length > 0 ? _concatDstDataToRecipient(recipient, dstData) : abi.encode(recipient);
+            _bridgeWithCcip(dstChainId, sourceFoundryToken, amountOut, dstData);
         } else {
             revert("FR: Invalid swap type");
         }
