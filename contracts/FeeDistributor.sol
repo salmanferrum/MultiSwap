@@ -23,12 +23,6 @@ abstract contract FeeDistributor is EIP712, Ownable {
         "ReferralSignature(bytes32 salt,uint256 expiry)"
     );
 
-    struct ReferralSignature {
-        bytes32 salt;
-        uint256 expiry;
-        bytes signature;
-    }
-
     struct ReferralData {
         address referral;
         uint256 referralShare;
@@ -89,9 +83,9 @@ abstract contract FeeDistributor is EIP712, Ownable {
     function _distributeFees(
         address token,
         uint256 preFeeAmount,
-        ReferralSignature memory refSigData
+        bytes memory refSigData
     ) internal returns (uint256) {
-        ReferralData memory referralData = _getReferralData(refSigData);
+        ReferralData memory referralData = refSigData.length == 0 ? referrals[address(0)] : _getReferralData(refSigData);
 
         uint256 totalFee = platformFee;
         if (totalFee > 0){
@@ -110,22 +104,24 @@ abstract contract FeeDistributor is EIP712, Ownable {
         return preFeeAmount - totalFee;
     }
 
-    function _getReferralData(ReferralSignature memory refSigData) private returns (ReferralData memory) {
-        require(block.timestamp < refSigData.expiry, "FD: Signature timed out");
-        require(refSigData.expiry < block.timestamp + (3 * MINUTE), "FD: Expiry too far");
-        require(!usedSalt[refSigData.salt], "FM: Salt already used");
-        usedSalt[refSigData.salt] = true;
+    function _getReferralData(bytes memory refSigData) private returns (ReferralData memory) {
+        (bytes32 salt, uint256 expiry, bytes memory signature) = abi.decode(refSigData, (bytes32, uint256, bytes));
+
+        require(block.timestamp < expiry, "FD: Signature timed out");
+        require(expiry < block.timestamp + (3 * MINUTE), "FD: Expiry too far");
+        require(!usedSalt[salt], "FM: Salt already used");
+        usedSalt[salt] = true;
 
         bytes32 structHash = keccak256(
             abi.encode(
                 REFERRAL_CODE_TYPEHASH,
-                refSigData.salt,
-                refSigData.expiry
+                salt,
+                expiry
             )
         );
 
         bytes32 digest = _hashTypedDataV4(structHash);
-        address referralCode = ECDSA.recover(digest, refSigData.signature);
+        address referralCode = ECDSA.recover(digest, signature);
         return referrals[referralCode];
     }
 }

@@ -92,7 +92,7 @@ abstract contract ITSApp is BaseRouter {
             address recipient = abi.decode(data, (address));
             _moveTokens(token, address(this), recipient, amount);
         } else if (data.length > 0x20) { // TODO: Implement finalizeCross + Swap
-            (address recipient, bytes memory oneInchCalldata) = abi.decode(data, (address, bytes)); // There's also 4 more: minAmountOut, targetToken, router, routerCalldata
+            (address recipient, bytes memory oneInchCalldata) = abi.decode(data, (address, bytes));
         } else {
             revert("FR: Invalid data length");
         }

@@ -46,12 +46,30 @@ abstract contract CCIPApp is CCIPReceiver, BaseRouter {
 
     function _ccipReceive(Client.Any2EVMMessage memory any2EvmMessage) internal override {
         require(trustedRemoteRouters[_getChainId(any2EvmMessage.sourceChainSelector)] == abi.decode(any2EvmMessage.sender, (address)), "CCIPApp: Router not trusted");
-        
-        if (any2EvmMessage.data.length == 0x20) {
+        if (any2EvmMessage.data.length == 0x20) { // Simple transfer
             address recipient = abi.decode(any2EvmMessage.data, (address));
             _moveTokens(any2EvmMessage.destTokenAmounts[0].token, address(this), recipient, any2EvmMessage.destTokenAmounts[0].amount);
-        } else if (any2EvmMessage.data.length > 0x20) {
-            
+        } else if (any2EvmMessage.data.length > 0x20) { // Destination side swaps
+            (
+                address recipient,
+                address toToken,
+                uint256 minAmountOut,
+                address router,
+                bytes memory dstRouterCalldata
+            ) = abi.decode(any2EvmMessage.data, (address, address, uint256, address, bytes));
+
+            (address settledToken, uint256 amountOut) = _swapOrSettle(
+                recipient,
+                any2EvmMessage.destTokenAmounts[0].token,
+                toToken,
+                any2EvmMessage.destTokenAmounts[0].amount,
+                minAmountOut,
+                router,
+                dstRouterCalldata
+            );
+
+            emit FinalizeCrossAndSwap(settledToken, amountOut, recipient, _getChainId(any2EvmMessage.sourceChainSelector));
+
         } else {
             revert("CCIPApp: Invalid data length");
         }
@@ -76,5 +94,20 @@ abstract contract CCIPApp is CCIPReceiver, BaseRouter {
 
         require(ccipChainSelector != 0, "CCIPApp: ccipChainSelector not set");
         return ccipChainSelector;
+    }
+
+    /**
+     * @dev The 5th word of dstData is the offset for where dstRouterCalldata starts.
+     *      This will need to be adjusted if the dstData input format is changed
+     * @param recipient The recipient
+     * @param dstData dstData taking the form (address,uint256,address,bytes)
+     */
+    function _concatDstDataToRecipient(address recipient, bytes memory dstData) internal pure returns (bytes memory) {
+        assembly {
+            let offset := add(dstData, 0x80) // idx for 5th word, corresponding to dstRouterCalldata offset
+            let newValue := add(mload(offset), 0x20) // Add a word to it, since we concat recipient to beginning
+            mstore(offset, newValue) // Store new value back
+        }
+        return abi.encodePacked(abi.encode(recipient), dstData); // concat to recipient
     }
 }
