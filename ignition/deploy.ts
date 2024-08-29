@@ -1,8 +1,8 @@
 import hre from "hardhat"
 import * as fs from 'fs';
 import path from 'path';
-import MultiSwapModule from "./modules/MultiSwap"
-import addresses from "../constants/addresses.json"
+import MultiSwapModule from "./modules/Multiswap"
+import addresses from "../constants/addresses_test.json"
 
 
 const writeJsonToFile = (filePath: string, data: object) => {
@@ -16,7 +16,7 @@ async function main() {
     addresses.networks[hre.network.name].deployments.pool = await pool.getAddress();
     console.log(`Deployed FiberRouter at ${addresses.networks[hre.network.name].deployments.fiberRouter}`);
     console.log(`Deployed Pool at ${addresses.networks[hre.network.name].deployments.pool}`);
-    const filePath = path.join(__dirname, '../constants/addresses.json');
+    const filePath = path.join(__dirname, '../constants/addresses_test.json');
     writeJsonToFile(filePath, addresses);
 }
 

@@ -1,14 +1,13 @@
 {
-    "signer": "0xF81f80C04C421F98c06232D2DF7E2aC8790bb19B",
-    "liquidityManager": "0x5dAC22dB4dEaCfab7e9A0A1425f25D6B18e9839C",
-    "liquidityManagerBot": "0x9B7C800DCca6273CB6DDb861764cFB95BDAb15cc",
-    "withdrawal": "0x1370172Ed69Ec231cDB8E59d928D42824094c0C6",
-    "settlementManager": "0x5912cE9327C2F8BE2Ffce1e8E521F6a65A870a19",
-    "gasWallet": "0xBFBFE0e25835625efa98161e3286Ca1290057E1a",
-    "gasEstimationWallet": "0xF81f80C04C421F98c06232D2DF7E2aC8790bb19B",
-    "feeWallet": "0xBFBFE0e25835625efa98161e3286Ca1290057E1a",
-    "platformFee": 1,
-    "bounds": 1,
+    "signer": "0x93069da82B264E94068aA991b88b3478cf0861BE",
+    "liquidityManager": "0x93069da82B264E94068aA991b88b3478cf0861BE",
+    "liquidityManagerBot": "0x93069da82B264E94068aA991b88b3478cf0861BE",
+    "withdrawal": "0x93069da82B264E94068aA991b88b3478cf0861BE",
+    "settlementManager": "0x93069da82B264E94068aA991b88b3478cf0861BE",
+    "gasWallet": "0x93069da82B264E94068aA991b88b3478cf0861BE",
+    "gasEstimationWallet": "0x93069da82B264E94068aA991b88b3478cf0861BE",
+    "feeWallet": "0x93069da82B264E94068aA991b88b3478cf0861BE",
+    "platformFee": 10000,
     "networks": {
         "arbitrum": {
             "chainId": 42161,
@@ -16,12 +15,12 @@
             "weth": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
             "foundry": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
             "deployments": {
-                "fiberRouter": "",
-                "pool": ""
+                "fiberRouter": "0x9e75c225f20638deae9273CE2a7c09009b7811a0",
+                "pool": "0xbd4961AeD7d06834DC7111f554dc0fd09be54BB0"
             },
             "ccip": {
                 "router": "0x141fa059441E0ca23ce184B6A78bafD2A517DdE8",
-                "chainSelector": 4949039107694359620
+                "chainSelector": 4949039107694360000
             },
             "stg": {
                 "stgUSDCPool": "0xe8CDF27AcD73a434D661C84887215F7598e7d0d3",
@@ -61,12 +60,12 @@
             "weth": "0x4200000000000000000000000000000000000006",
             "foundry": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
             "deployments": {
-                "fiberRouter": "",
-                "pool": ""
+                "fiberRouter": "0x51d457B7370e3D67D06b17f787ef08287a1a7122",
+                "pool": "0x5b0208c22cB590cD094Fed20712881AA58363B40"
             },
-            "cctp": {
+            "ccip": {
                 "router": "0x881e3A65B4d4a04dD529061dd0071cf975F58bCD",
-                "chainSelector": 15971525489660198786
+                "chainSelector": 15971525489660199000
             },
             "stg": {
                 "stgUSDCPool": "0x27a16dc786820B16E5c9028b75B99F6f604b5d26",
@@ -100,18 +99,73 @@
                 }
             ]
         },
+        "bsc": {
+            "chainId": 56,
+            "quantumPortal": "0xD73B1C4D1e686492aa46F21e1701Fd7d707b53BA",
+            "weth": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+            "foundry": "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
+            "deployments": {
+                "fiberRouter": "0x3f8c19369240a578fE76D548493322EC1c5Ff34e",
+                "pool": "0x2325C5A863C532021f5ae0465e30F2896B447745"
+            },
+            "ccip": {
+                "router": "0x34B03Cb9086d7D758AC55af71584F81A598759FE",
+                "chainSelector": 11344663589394135000
+            },
+            "stg": {
+                "stgUSDCPool": "",
+                "stgEndpointID": 0,
+                "stgEndpoint": ""
+            },
+            "swapRouters": [
+                {
+                    "router": "0x111111125421cA6dc452d289314280a0f8842A65",
+                    "selectors": [
+                        "0xd2d374e5",
+                        "0xc4d652af",
+                        "0xa76dfc3b",
+                        "0x89af926a",
+                        "0x188ac35d",
+                        "0x175accdc",
+                        "0x0f449d71",
+                        "0x493189f0",
+                        "0xcc713a04",
+                        "0x56a75868",
+                        "0x9fda64bd",
+                        "0xf497df75",
+                        "0x07ed2379",
+                        "0x83800a8e",
+                        "0x8770ba91",
+                        "0x19367472",
+                        "0xe2c95c82",
+                        "0xea76dddf",
+                        "0xf7a70056"
+                    ]
+                }
+            ]
+        },
+        "ferrum_testnet": {
+            "chainId": 26100,
+            "quantumPortal": "0xF348a3D83ab349efC622731DD64c8c3bA4543b25",
+            "weth": "0x0000000000000000000000000000000000026026",
+            "foundry": "0xF45fCD48BdAB3156fF31a74161a454afa749a170",
+            "deployments": {
+                "fiberRouter": "0x2CfeEAEB816D3e595cbd34D1fA1aAd2Ff9FC6FFe",
+                "pool": "0xd5f0A5a53954CcD74bCF0492c79D04DfE26B73Ed"
+            }
+        },
         "localhost": {
             "chainId": 31337,
             "weth": "0x5300000000000000000000000000000000000004",
             "quantumPortal": "0xD73B1C4D1e686492aa46F21e1701Fd7d707b53BA",
             "foundry": "0x06eFdBFf2a14a7c8E15944D1F4A48F9F95F663A4",
             "deployments": {
-                "fiberRouter": "",
-                "pool": ""
+                "fiberRouter": "0xCe1C6851843125167C223423BB3b88c465b96107",
+                "pool": "0x8d6e07A6C15E1cdB881d665E0dA4D7C2004a1929"
             },
             "ccip": {
                 "router": "0x141fa059441E0ca23ce184B6A78bafD2A517DdE8",
-                "chainSelector": 4949039107694359620
+                "chainSelector": 4949039107694360000
             },
             "swapRouters": [
                 {
@@ -125,7 +179,7 @@
             ]
         },
         "hardhat": {
-            "chainId": 11155111,
+            "chainId": 31337,
             "quantumPortal": "0xD73B1C4D1e686492aa46F21e1701Fd7d707b53BA",
             "weth": "0x5300000000000000000000000000000000000004",
             "foundry": "0x06eFdBFf2a14a7c8E15944D1F4A48F9F95F663A4",
@@ -135,7 +189,7 @@
             },
             "ccip": {
                 "router": "0x141fa059441E0ca23ce184B6A78bafD2A517DdE8",
-                "chainSelector": 4949039107694359620
+                "chainSelector": 4949039107694360000
             },
             "swapRouters": [
                 {
