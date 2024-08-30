@@ -6,6 +6,7 @@ import { HardhatUserConfig } from "hardhat/types"
 import dotenv from 'dotenv'
 dotenv.config()
 
+
 const config: HardhatUserConfig = {
   solidity: {
     compilers: [
@@ -33,6 +34,27 @@ const config: HardhatUserConfig = {
   //   },
   // },
   networks: {
+    localhost1: {
+      chainId: 31337,
+      url: "http://localhost:8545",
+      forking: {
+        url: process.env.ARBITRUM_RPC!,
+      },
+    },
+    localhost2: {
+      chainId: 31337,
+      url: "http://localhost:8546",
+      forking: {
+        url: process.env.BASE_RPC!,
+      },
+    },
+    localhost3: {
+      chainId: 31337,
+      url: "http://localhost:8547",
+      forking: {
+        url: process.env.BSC_RPC!,
+      },
+    },
     localhost: {
       chainId: 31337,
       // accounts: [process.env.PRIVATE_KEY0!],
@@ -51,7 +73,7 @@ const config: HardhatUserConfig = {
       url: process.env.POLYGON_RPC!,
       accounts: [process.env.PRIVATE_KEY0!]
     },
-    binance: {
+    bsc: {
       url: process.env.BSC_RPC!,
       accounts: [process.env.PRIVATE_KEY0!]
     },
@@ -78,6 +100,13 @@ const config: HardhatUserConfig = {
     base: {
       url: process.env.BASE_RPC!,
       accounts: [process.env.PRIVATE_KEY0!]
+    },
+    ferrum_testnet: {
+      chainId: 26100,
+      url: "https://testnet.dev.svcs.ferrumnetwork.io",
+      accounts: [process.env.PRIVATE_KEY0!],
+      allowUnlimitedContractSize: true,
+      gas: 10000000, // this override is required for Substrate based evm chains
     },
     // zksync: {
     //   url: "https://mainnet.era.zksync.io",
@@ -115,7 +144,8 @@ const config: HardhatUserConfig = {
       optimism: process.env.OPTIMISTIC_ETHERSCAN_API_KEY!,
       arbitrumOne: process.env.ARBISCAN_API_KEY!,
       base: process.env.BASESCAN_API_KEY!,
-      avalanche: process.env.AVALANCHESCAN_API_KEY!
+      avalanche: process.env.AVALANCHESCAN_API_KEY!,
+      ferrum_testnet: 'empty'
     },
     customChains: [
       {
@@ -133,6 +163,14 @@ const config: HardhatUserConfig = {
           apiURL: "https://api-era.zksync.network/api",
           browserURL: "https://era.zksync.network/"
         }
+      },
+      {
+        network: "ferrum_testnet",
+        chainId: 26100,
+        urls: {
+          apiURL: "https://testnet-explorer.svcs.ferrumnetwork.io/api",
+          browserURL: "http://https://testnet-explorer.svcs.ferrumnetwork.io"
+        }
       }
     ]
   },
@@ -143,7 +181,7 @@ const config: HardhatUserConfig = {
     strategyConfig: {
       create2: {
         // To learn more about salts, see the CreateX documentation
-        salt: "0x0000000000000000000000000000100000000000000000000000000000000000",
+        salt: "0x0000000000000000000000000000000000000000000000000000000000000001",
       },
     },
   },
