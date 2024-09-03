@@ -11,6 +11,7 @@ async function main() {
     const thisNetwork = hre.network.name;
     const currentNetworkInfo = addresses.networks[thisNetwork];
     const dstNetworkInfo = addresses.networks["base"];
+    const targetChainID = dstNetworkInfo.chainId;
     const fiberRouterAddress = currentNetworkInfo.deployments.fiberRouter;
     const dstFiberRouterAddress = dstNetworkInfo.deployments.fiberRouter;
     const fiberRouter = await hre.ethers.getContractAt("FiberRouter", fiberRouterAddress);
@@ -22,7 +23,7 @@ async function main() {
     const amountIn = 20000n
     const oneInchRouterAddress = "0x111111125421ca6dc452d289314280a0f8842a65"
 
-    const res = await get1InchData(8453, dstFoundry, toToken, amountIn, dstFiberRouterAddress, walletAddress)
+    const res = await get1InchData(currentNetworkInfo.chainId, dstFoundry, toToken, amountIn, dstFiberRouterAddress, walletAddress)
 
     console.log(res)
 
@@ -38,7 +39,7 @@ async function main() {
         amountIn,
         10n ** 18n,
         walletAddress,
-        8453,
+        targetChainID,
         0,
         "0x",
         dstData
