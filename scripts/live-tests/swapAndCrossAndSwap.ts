@@ -23,7 +23,7 @@ async function main() {
     const toToken = "0x4200000000000000000000000000000000000006"
     const amountIn = 20000000000000n
     
-    const srcRes = await get1InchData(42161, fromToken, srcFoundry, amountIn, fiberRouterAddress, fiberRouterAddress)
+    const srcRes = await get1InchData(currentNetworkInfo.chainId, fromToken, srcFoundry, amountIn, fiberRouterAddress, fiberRouterAddress)
 
     console.log("Source 1inch data: ", srcRes)
 
