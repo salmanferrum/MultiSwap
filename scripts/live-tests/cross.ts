@@ -2,13 +2,17 @@ import hre from "hardhat";
 import addresses from "../../constants/addresses_test.json";
 
 async function main() {
+    const targetNetwork = "ferrum_testnet";
     const thisNetwork = hre.network.name;
+    const targetNetworkInfo = addresses.networks[targetNetwork];
+    const targetChainID = targetNetworkInfo.chainId;
     const currentNetworkInfo = addresses.networks[thisNetwork];
+
     const fiberRouterAddress = currentNetworkInfo.deployments.fiberRouter;
     const fiberRouter = await hre.ethers.getContractAt("FiberRouter", fiberRouterAddress);
-    const recipient = "0x93069da82B264E94068aA991b88b3478cf0861BE"
-    const foundryAddress = "0xF45fCD48BdAB3156fF31a74161a454afa749a170"
-    const qpFeeTokenAddress = "0x4acc6E4ae8b93d7E5474b0aBb0680D1A16b2f94f"
+    const recipient = "0x2F169deC5B55420864967f28D545A2898c71b28B"
+    const foundryAddress = "0x6FCF42A7EFFC92410CE6dc8fC13bD4600abe7bB6"
+    const qpFeeTokenAddress = "0x6d34420dcaf516bec9d81e5d79fac2100058c9ac"
     const amountIn = 10000000n
 
     const mockFoundry = await hre.ethers.getContractAt("Token", foundryAddress);
@@ -27,7 +31,7 @@ async function main() {
         amountIn,
         10n ** 18n,
         recipient,
-        56,
+        targetChainID,
         0,
         "0x"
     )
