@@ -10,7 +10,7 @@ export default buildModule("MultiSwap", (m) => {
 
     // Parameters for deployment
     const portalAddress = m.getParameter("quantumPortal", addresses.networks[currentNetwork].quantumPortal)
-    const gasWalletAddress = m.getParameter("gasWalletAddress", addresses.gasWallet)
+    const wethAddress = m.getParameter("wethAddress", addresses.networks[currentNetwork].weth)
     const settlementManagerAddress = m.getParameter("settlementManager", addresses.settlementManager)
     const liquidityManagerAddress = m.getParameter("liquidityManager", addresses.liquidityManager)
     const liquidityManagerBotAddress = m.getParameter("liquidityManagerBot", addresses.liquidityManagerBot)
@@ -32,7 +32,7 @@ export default buildModule("MultiSwap", (m) => {
     // Deploy FiberRouter contract
     const fiberRouter = m.contract("FiberRouter", [
         pool,
-        gasWalletAddress,
+        wethAddress,
         portalAddress,
         ccipRouter
     ])

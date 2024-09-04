@@ -75,6 +75,27 @@ abstract contract FeeDistributor is EIP712, Ownable {
         require(referrals[publicReferralCode].referral != address(0), "FD: Referral does not exist");
         delete referrals[publicReferralCode];
     }
+
+    // Function to fetch the referral
+    function getReferral(address publicReferralCode)
+        external
+        view
+        returns (
+            address referral,
+            uint256 referralShare,
+            uint256 referralDiscount
+        )
+    {
+        ReferralData memory referralData = referrals[publicReferralCode];
+        require(referralData.referral != address(0), "FD: Referral does not exist");
+        
+        return (
+            referralData.referral,
+            referralData.referralShare,
+            referralData.referralDiscount
+        );
+    }
+
     
     //#############################################################
     //################ INTERNAL LOGIC FUNCTIONS ###################
