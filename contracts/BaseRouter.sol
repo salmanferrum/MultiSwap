@@ -7,12 +7,12 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 import { SafeAmount } from "./common/SafeAmount.sol";
 import { Pool } from "./Pool.sol";
 
-
 abstract contract BaseRouter is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
-    address private constant NATIVE_CURRENCY = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    address public constant NATIVE_CURRENCY = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     
     Pool public pool;
+    address public weth;
 
     mapping(address => mapping(uint256 => address)) public tokenPaths;  // sourceToken => remoteChainId => remoteToken
     mapping(uint256 => address) public trustedRemoteRouters;            // remoteChainId => remoteFiberRouter
@@ -52,6 +52,15 @@ abstract contract BaseRouter is Ownable, ReentrancyGuard {
         uint256 srcChainId
     );
 
+    event SwapSameNetwork(
+        address sourceToken,
+        address targetToken,
+        uint256 sourceAmount,
+        uint256 settledAmount,
+        address sourceAddress,
+        address targetAddress
+    );
+
     event DstSwapFailureReason(
         bytes reason
     );
@@ -59,10 +68,11 @@ abstract contract BaseRouter is Ownable, ReentrancyGuard {
     event RouterAndSelectorWhitelisted(address router, bytes4 selector);
     event RouterAndSelectorRemoved(address router, bytes selector);
 
-    constructor(address _pool, address payable _gasWallet) {
+    constructor(address _pool, address _weth) {
         require(_pool != address(0), "BR: Pool address cannot be zero");
-        require(_gasWallet != address(0), "BR: Gas wallet address cannot be zero");
+        require(_weth != address(0), "BR: Weth address cannot be zero");
         pool = Pool(_pool);
+        weth = _weth;
     }
 
     //#############################################################
@@ -75,6 +85,15 @@ abstract contract BaseRouter is Ownable, ReentrancyGuard {
     function setPool(address _pool) external onlyOwner {
         require(_pool != address(0), "BR: Swap pool address cannot be zero");
         pool = Pool(_pool);
+    }
+
+    /**
+     * @dev Sets the WETH address.
+     * @param _weth The WETH address
+     */
+    function setWeth(address _weth) external onlyOwner {
+        require(_weth != address(0), "BR: Weth address cannot be zero");
+        weth = _weth;
     }
 
     function addTrustedRemotes(

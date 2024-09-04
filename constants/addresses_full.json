@@ -4,7 +4,6 @@
     "liquidityManagerBot": "0x9B7C800DCca6273CB6DDb861764cFB95BDAb15cc",
     "withdrawal": "0x1370172Ed69Ec231cDB8E59d928D42824094c0C6",
     "settlementManager": "0x5912cE9327C2F8BE2Ffce1e8E521F6a65A870a19",
-    "gasWallet": "0xBFBFE0e25835625efa98161e3286Ca1290057E1a",
     "gasEstimationWallet": "0x896aa74980f510e17Ec22A9906b6ce82Ef84C49F",
 
     "networks": {

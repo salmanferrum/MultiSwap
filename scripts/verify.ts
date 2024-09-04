@@ -15,7 +15,7 @@ async function main() {
     const withdrawalAddress = addresses.withdrawal;
     const ccipRouter = addresses.networks[currentNetwork].ccip.router;
    // const ccipRouter = "0x0000000000000000000000000000000000000001"; // Hardcoded value from deployment
-    const gasWalletAddress = addresses.gasWallet;
+    const wethAddress = addresses.networks[currentNetwork].weth;
     const portalAddress = addresses.networks[currentNetwork].quantumPortal;
 
     // Verify Pool contract
@@ -37,7 +37,7 @@ async function main() {
         address: fiberRouterAddress,
         constructorArguments: [
             poolAddress,
-            gasWalletAddress,
+            wethAddress,
             portalAddress,
             ccipRouter
         ],

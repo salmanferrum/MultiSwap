@@ -10,7 +10,7 @@ const deployModule = buildModule("Deploy", (m) => {
 
     // Parameters for deployment
     const portalAddress = m.getParameter("quantumPortal", addresses.networks[currentNetwork].quantumPortal)
-    const gasWalletAddress = m.getParameter("gasWalletAddress", deployer)
+    const wethAddress = m.getParameter("wethAddress", deployer)
     const settlementManagerAddress = m.getParameter("settlementManager", deployer)
     const liquidityManagerAddress = m.getParameter("liquidityManager", deployer)
     const liquidityManagerBotAddress = m.getParameter("liquidityManagerBot", deployer)
@@ -35,7 +35,7 @@ const deployModule = buildModule("Deploy", (m) => {
     // Deploy FiberRouter contract
     const fiberRouter = m.contract("FiberRouter", [
         pool,
-        gasWalletAddress,
+        wethAddress,
         portalAddress,
         ccipRouter
     ])

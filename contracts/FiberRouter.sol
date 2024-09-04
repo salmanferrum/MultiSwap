@@ -11,28 +11,12 @@ import { QuantumPortalApp } from "./QuantumPortalApp.sol";
 
 
 contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIPApp {
-    address private constant NATIVE_CURRENCY = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
-    address public weth;
-
-    event SwapSameNetwork(
-        address sourceToken,
-        address targetToken,
-        uint256 sourceAmount,
-        uint256 settledAmount,
-        address sourceAddress,
-        address targetAddress
-    );
-
     constructor(
         address pool,
-        address payable gasWallet,
+        address weth,
         address portal,
-        address ccipRouter,
-        address _weth
-    ) QuantumPortalApp(portal) Ownable(tx.origin) CCIPApp(ccipRouter) BaseRouter(pool, gasWallet) {
-        require(_weth != address(0), "FR: Weth address cannot be zero");
-        weth = _weth;
-    }
+        address ccipRouter
+    ) QuantumPortalApp(portal) Ownable(tx.origin) CCIPApp(ccipRouter) BaseRouter(pool, weth) {}
 
     //#############################################################
     //###################### USER FUNCTIONS #######################

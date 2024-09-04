@@ -14,6 +14,7 @@ async function main() {
     const foundryAddress = "0x6FCF42A7EFFC92410CE6dc8fC13bD4600abe7bB6"
     const qpFeeTokenAddress = "0x6d34420dcaf516bec9d81e5d79fac2100058c9ac"
     const amountIn = 10000000n
+    const qpFeeAmount = 10n ** 18n;
 
     const mockFoundry = await hre.ethers.getContractAt("Token", foundryAddress);
     const qpFeeToken = await hre.ethers.getContractAt("Token", qpFeeTokenAddress);
