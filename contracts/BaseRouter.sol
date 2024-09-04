@@ -9,7 +9,7 @@ import { Pool } from "./Pool.sol";
 
 abstract contract BaseRouter is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
-    address public constant NATIVE_CURRENCY = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    address internal constant NATIVE_CURRENCY = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     
     Pool public pool;
     address public weth;
