@@ -22,24 +22,25 @@ async function main() {
     approveFoundryTx.wait()
     console.log("Approved Foundry")
 
-    const approveQpFeeTokenTx = await qpFeeToken.approve(fiberRouterAddress, 10n ** 18n)
+    const approveQpFeeTokenTx = await qpFeeToken.approve(fiberRouterAddress, qpFeeAmount)
     approveQpFeeTokenTx.wait()
     console.log("Approved QP Fee Token")
 
     const tx = await fiberRouter.cross(
         mockFoundry,
         amountIn,
-        10n ** 18n,
+        qpFeeAmount,
         recipient,
         targetChainID,
         0,
-        "0x"
+        "0x",
+        {
+            gasLimit: 5000000
+        }
     )
 
     console.log("hash: ", tx.hash)
-
     await tx.wait()
-
     console.log("confirmed")
 }
 
