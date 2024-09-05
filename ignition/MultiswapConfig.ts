@@ -1,7 +1,7 @@
 import { ethers } from "hardhat";
 import hre from "hardhat";
 import { ContractTransaction } from "ethers";
-import addresses from "../constants/addresses.json";
+import addresses from "../constants/addresses_test.json";
 import { id } from "ethers";  // Import 'id' directly from 'ethers'
 
 async function main() {
@@ -20,9 +20,6 @@ async function main() {
   const pool = Pool.attach(poolAddress);
   const fiberRouter = FiberRouter.attach(fiberRouterAddress);
 
-  // Call setFiberRouter on the deployed Pool contract
-  await setFiberRouter(pool, fiberRouterAddress);
-
   // Stargate-specific setup
   const lzEndpoint = addresses.networks[currentNetwork].stg?.stgEndpoint;
   const stargateUsdcPool = addresses.networks[currentNetwork].stg?.stgUSDCPool;
@@ -38,33 +35,16 @@ async function main() {
   }
 
   // Set platform fee
-  const platformFee = 10000; // Example platform fee 0.1 USDC based on the decimals of the network, set as needed
+  const platformFee = 100000000000000; // Example platform fee 0.1 USDC based on the decimals of the network, set as needed
   await setPlatformFee(fiberRouter, platformFee);
 
-//   // Set platform feeWallet
-  const feeWallet = "0x2F169deC5B55420864967f28D545A2898c71b28B"; 
-  await setFeeWallet(fiberRouter, feeWallet);
-
 // Allow Stargate for other networks
+if (isStg) {
    await allowStgTargets(fiberRouter);
-
-// Add referral
-   await addReferral(fiberRouter, signer);
+}
 
   console.log("Post-deployment actions completed successfully.");
 }
-
-async function setFiberRouter(pool: any, fiberRouterAddress: string) {
-    console.log("\n##### Setting FiberRouter on Pool #####");
-  
-    try {
-      const tx = await pool.setFiberRouter(fiberRouterAddress);
-      await tx.wait();
-      console.log(`setFiberRouter transaction completed: ${tx.hash}`);
-    } catch (error) {
-      console.error("Failed to set FiberRouter on Pool:", error);
-    }
-  }
   
 async function initializeFiberRouter(fiberRouter: any, stargateUsdcPool: string, foundry: string, lzEndpoint: string) {
     console.log("\n##### Initializing FiberRouter with Stargate config #####");
@@ -87,18 +67,6 @@ async function setPlatformFee(fiberRouter: any, platformFee: number) {
       console.log(`setPlatformFee transaction completed: ${tx.hash}`);
     } catch (error) {
       console.error("Failed to set platform fee:", error);
-    }
-  }
-
-async function setFeeWallet(fiberRouter: any, feeWallet: string) {
-    console.log("\n##### Setting Fee Wallet on FiberRouter #####");
-  
-    try {
-      const tx = await fiberRouter.setFeeWallet(feeWallet);
-      await tx.wait();
-      console.log(`setFeeWallet transaction completed: ${tx.hash}`);
-    } catch (error) {
-      console.error("Failed to set FeeWallet:", error);
     }
   }
 

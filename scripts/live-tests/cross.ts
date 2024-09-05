@@ -11,9 +11,9 @@ async function main() {
     const fiberRouterAddress = currentNetworkInfo.deployments.fiberRouter;
     const fiberRouter = await hre.ethers.getContractAt("FiberRouter", fiberRouterAddress);
     const recipient = "0x2F169deC5B55420864967f28D545A2898c71b28B"
-    const foundryAddress = "0x6FCF42A7EFFC92410CE6dc8fC13bD4600abe7bB6"
+    const foundryAddress = addresses.networks[thisNetwork].foundry;
     const qpFeeTokenAddress = "0x6d34420dcaf516bec9d81e5d79fac2100058c9ac"
-    const amountIn = 10000000n
+    const amountIn = 100000n
     const qpFeeAmount = 10n ** 18n;
 
     const mockFoundry = await hre.ethers.getContractAt("Token", foundryAddress);

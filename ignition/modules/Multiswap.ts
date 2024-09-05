@@ -2,7 +2,7 @@ import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 import hre from "hardhat";
 import addresses from "../../constants/addresses_test.json"
 
-const testLiquidityAmount = 100000000000000000n
+const testLiquidityAmount = 3000000n
 
 const deployModule = buildModule("Deploy", (m) => {
     const currentNetwork = hre.network.name
@@ -10,7 +10,7 @@ const deployModule = buildModule("Deploy", (m) => {
 
     // Parameters for deployment
     const portalAddress = m.getParameter("quantumPortal", addresses.networks[currentNetwork].quantumPortal)
-    const wethAddress = m.getParameter("wethAddress", deployer)
+    const wethAddress = m.getParameter("wethAddress", addresses.networks[currentNetwork].weth)
     const settlementManagerAddress = m.getParameter("settlementManager", deployer)
     const liquidityManagerAddress = m.getParameter("liquidityManager", deployer)
     const liquidityManagerBotAddress = m.getParameter("liquidityManagerBot", deployer)

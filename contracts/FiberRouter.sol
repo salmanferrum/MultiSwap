@@ -259,7 +259,7 @@ contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIP
         require(recipient != address(0), "FR: Recipient address cannot be zero");
 
         amountIn = _moveTokens(sourceFoundryToken, msg.sender, address(this), amountIn);
-        amountIn = _distributeFees(sourceFoundryToken, amountIn, refSigData);
+        amountIn = _distributeFees(msg.sender, sourceFoundryToken, amountIn, refSigData);
 
         if (swapType == 0) {
             amountIn = _transferToPool(sourceFoundryToken, address(this), amountIn);
@@ -312,7 +312,7 @@ contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIP
             srcRouterCalldata
         );
 
-        amountOut = _distributeFees(sourceFoundryToken, amountOut, refSigData);
+        amountOut = _distributeFees(msg.sender, sourceFoundryToken, amountOut, refSigData);
 
         if (swapType == 0) {
             amountOut = _transferToPool(sourceFoundryToken, address(this), amountOut);
