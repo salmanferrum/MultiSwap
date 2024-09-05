@@ -98,36 +98,7 @@ abstract contract FeeDistributor is EIP712, Ownable {
         );
         delete referrals[publicReferralCode];
     }
-
-    /**
-     * @dev Fetches the referral data for a given public referral code.
-     * @param publicReferralCode The address associated with the referral code.
-     * @return referral The address of the referral.
-     * @return referralShare The percentage share of the referral.
-     * @return referralDiscount The discount percentage provided by the referral.
-     */
-    function getReferral(address publicReferralCode)
-        external
-        view
-        returns (
-            address referral,
-            uint256 referralShare,
-            uint256 referralDiscount
-        )
-    {
-        ReferralData memory referralData = referrals[publicReferralCode];
-        require(
-            referralData.referral != address(0),
-            "FD: Referral does not exist"
-        );
-
-        return (
-            referralData.referral,
-            referralData.referralShare,
-            referralData.referralDiscount
-        );
-    }
-
+    
     //#############################################################
     //################ INTERNAL LOGIC FUNCTIONS ###################
     //#############################################################

@@ -36,6 +36,7 @@ const deployModule = buildModule("Deploy", (m) => {
     const fiberRouter = m.contract("FiberRouter", [
         pool,
         wethAddress,
+        wethAddress,
         portalAddress,
         ccipRouter
     ])

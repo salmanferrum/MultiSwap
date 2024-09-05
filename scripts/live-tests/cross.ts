@@ -13,7 +13,7 @@ async function main() {
     const recipient = "0x2F169deC5B55420864967f28D545A2898c71b28B"
     const foundryAddress = addresses.networks[thisNetwork].foundry;
     const qpFeeTokenAddress = "0x6d34420dcaf516bec9d81e5d79fac2100058c9ac"
-    const amountIn = 100000n
+    const amountIn = 10000000n
     const qpFeeAmount = 10n ** 18n;
 
     const mockFoundry = await hre.ethers.getContractAt("Token", foundryAddress);
