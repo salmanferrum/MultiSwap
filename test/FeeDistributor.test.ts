@@ -215,7 +215,7 @@ describe("FiberRouter", () => {
             )
         })
 
-        it("Should correctly distribute fees with valid referral code", async () => {
+        it("Should correctly distribute fees with valid referral code added by owner", async () => {
             const amount = 100000n
             const frmBridgeFee = 1234n
 
@@ -232,7 +232,8 @@ describe("FiberRouter", () => {
                 referralRecipient,
                 referralShare,
                 referralDiscount,
-                referralCodePublicKey
+                referralCodePublicKey,
+                []
             )
 
             const refSigData = await getDummyReferralSig(referralCode, fiberRouterSrc)
@@ -249,6 +250,132 @@ describe("FiberRouter", () => {
 
             const revisedTotalFee = platformFee - (platformFee * referralDiscount / 100n)
             const referralFee = revisedTotalFee * referralShare / 100n
+            const revisedPlatformFee = revisedTotalFee - referralFee
+
+            await expect(tx).to.changeTokenBalances(
+                usdcSrc,
+                [signer, fiberRouterSrc, poolSrc, poolDst, recipient, multiswapFeeRecipient, referralRecipient],
+                [-amount, 0, amount-revisedTotalFee, 0, 0, revisedPlatformFee, referralFee]
+            )
+
+            await expect(tx).to.changeTokenBalances(
+                usdcDst,
+                [signer, fiberRouterDst, poolSrc, poolDst, recipient, multiswapFeeRecipient],
+                [0, 0, 0, -amount+revisedTotalFee, amount-revisedTotalFee, 0]
+            )
+
+            await expect(tx).to.changeTokenBalances(
+                frm,
+                [signer, portalFeeRecipient, multiswapFeeRecipient, referralRecipient],
+                [-frmBridgeFee, frmBridgeFee, 0, 0]
+            )
+        })
+
+        it("should correctly generate a referral code with default data and trade", async () => {
+            const amount = 100000n
+            const frmBridgeFee = 1234n
+            const referralCode = "user-chosen-code"
+            const fakeWallet = new Wallet(id(referralCode))
+            const referralCodePublicKey = fakeWallet.address.toLowerCase()
+            const defaultReferralShare = 50n
+            const defaultReferralDiscount = 50n
+
+            await fiberRouterSrc.connect(referralRecipient).createReferralCode(
+                referralCodePublicKey,
+            )
+
+            const refSigData = await getDummyReferralSig(referralCode, fiberRouterSrc)
+
+            await usdcSrc.approve(fiberRouterSrc, amount)
+            const tx = fiberRouterSrc.cross(
+                usdcSrc,
+                amount,
+                frmBridgeFee,
+                recipient,
+                chainId,
+                0,
+                refSigData
+            )
+
+            const revisedTotalFee = platformFee - (platformFee * defaultReferralDiscount / 100n)
+            const referralFee = revisedTotalFee * defaultReferralShare / 100n
+            const revisedPlatformFee = revisedTotalFee - referralFee
+
+            await expect(tx).to.changeTokenBalances(
+                usdcSrc,
+                [signer, fiberRouterSrc, poolSrc, poolDst, recipient, multiswapFeeRecipient, referralRecipient],
+                [-amount, 0, amount-revisedTotalFee, 0, 0, revisedPlatformFee, referralFee]
+            )
+
+            await expect(tx).to.changeTokenBalances(
+                usdcDst,
+                [signer, fiberRouterDst, poolSrc, poolDst, recipient, multiswapFeeRecipient],
+                [0, 0, 0, -amount+revisedTotalFee, amount-revisedTotalFee, 0]
+            )
+
+            await expect(tx).to.changeTokenBalances(
+                frm,
+                [signer, portalFeeRecipient, multiswapFeeRecipient, referralRecipient],
+                [-frmBridgeFee, frmBridgeFee, 0, 0]
+            )
+
+            const referralData = await fiberRouterSrc.referrals(referralCodePublicKey)
+            expect(referralData.referral).to.equal(await referralRecipient.getAddress())
+            expect(referralData.referralShare).to.equal(defaultReferralShare)
+            expect(referralData.referralDiscount).to.equal(defaultReferralDiscount)
+        })
+
+        it("should still use a the first code if a different one is subsequently passed", async () => {
+            const amount = 100000n
+            const frmBridgeFee = 1234n
+            let referralCode = "user-chosen-code"
+            let fakeWallet = new Wallet(id(referralCode))
+            let referralCodePublicKey = fakeWallet.address.toLowerCase()
+            const defaultReferralShare = 50n
+            const defaultReferralDiscount = 50n
+
+            await fiberRouterSrc.connect(referralRecipient).createReferralCode(
+                referralCodePublicKey,
+            )
+
+            let refSigData = await getDummyReferralSig(referralCode, fiberRouterSrc)
+
+            await usdcSrc.approve(fiberRouterSrc, amount * 2n)
+            await fiberRouterSrc.cross(
+                usdcSrc,
+                amount,
+                frmBridgeFee,
+                recipient,
+                chainId,
+                0,
+                refSigData
+            )
+
+            referralCode = "another-code"
+            fakeWallet = new Wallet(id(referralCode))
+            referralCodePublicKey = fakeWallet.address.toLowerCase()
+
+            await fiberRouterSrc.addReferral(
+                referralRecipient,
+                80,
+                80,
+                referralCodePublicKey,
+                []
+            )
+
+            refSigData = await getDummyReferralSig(referralCode, fiberRouterSrc)
+            const tx = fiberRouterSrc.cross(
+                usdcSrc,
+                amount,
+                frmBridgeFee,
+                recipient,
+                chainId,
+                0,
+                refSigData
+            )
+
+            const revisedTotalFee = platformFee - (platformFee * defaultReferralDiscount / 100n)
+            const referralFee = revisedTotalFee * defaultReferralShare / 100n
             const revisedPlatformFee = revisedTotalFee - referralFee
 
             await expect(tx).to.changeTokenBalances(

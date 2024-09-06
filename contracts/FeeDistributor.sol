@@ -13,13 +13,16 @@ abstract contract FeeDistributor is EIP712, Ownable {
     string public constant NAME = "FEE_DISTRIBUTOR";
     string public constant VERSION = "000.001";
     uint32 constant MINUTE = 60;
+    address public constant GENERAL_REFERRAL_KEY = address(1);
 
     address public feeWallet;
     uint256 public platformFee; // Platform fee as a fixed amount
+    uint48 public defaultReferralShare;
+    uint48 public defaultReferralDiscount;
 
     mapping(bytes32 => bool) public usedSalt;
     mapping(address => ReferralData) public referrals;
-    mapping(address => address) public userReferralCode; // userAddress => referralCode
+    mapping(address => address) public firstUsedCode; // userAddress => referralCode
 
     bytes32 constant REFERRAL_CODE_TYPEHASH = keccak256(
         "ReferralSignature(bytes32 salt,uint256 expiry)"
@@ -27,9 +30,24 @@ abstract contract FeeDistributor is EIP712, Ownable {
 
     struct ReferralData {
         address referral;
-        uint256 referralShare;
-        uint256 referralDiscount;
+        uint48 referralShare;
+        uint48 referralDiscount;
+        address[] users;
     }
+
+    event ReferralAdded(
+        address referral,
+        uint48 referralShare,
+        uint48 referralDiscount,
+        address publicReferralCode
+    );
+
+    event ReferralRemoved(
+        address referral,
+        uint48 referralShare,
+        uint48 referralDiscount,
+        address publicReferralCode
+    );
 
     event FeesDistributed(
         address token,
@@ -38,7 +56,27 @@ abstract contract FeeDistributor is EIP712, Ownable {
         uint256 totalFee
     );
 
-    constructor() EIP712(NAME, VERSION) {}
+    constructor() EIP712(NAME, VERSION) {
+        defaultReferralShare = 50;
+        defaultReferralDiscount = 50;
+    }
+
+    //#############################################################
+    //################ USER FUNCTIONS #############################
+    //#############################################################
+
+    /**
+     * @notice Allows anyone to create a new unique referral code
+     * with a 50% share and 50% discount (current defaul values)
+     * @param referralCode The referral to generate data for
+     */
+    function createReferralCode(
+        address referralCode
+    ) external {
+        require(referralCode != address(0), "FD: Bad referral code");
+        require(referrals[referralCode].referral == address(0), "FD: Already existing code");
+        referrals[referralCode] = ReferralData(msg.sender, defaultReferralShare, defaultReferralDiscount, new address[](0));
+    }
 
     //#############################################################
     //################ ADMIN FUNCTIONS ############################
@@ -63,6 +101,17 @@ abstract contract FeeDistributor is EIP712, Ownable {
     }
 
     /**
+     * @param _defaultReferralShare The default referral share percentage.
+     * @param _defaultReferralDiscount The default referral discount percentage.
+     */
+    function setDefaultReferralData(uint48 _defaultReferralShare, uint48 _defaultReferralDiscount) external onlyOwner {
+        require(_defaultReferralShare > 0 && _defaultReferralShare <= 100, "FD: Invalid referral fee");
+        require(_defaultReferralDiscount > 0 && _defaultReferralDiscount <= 100, "FD: Invalid referral discount");
+        defaultReferralShare = _defaultReferralShare;
+        defaultReferralDiscount = _defaultReferralDiscount;
+    }
+
+    /**
      * @dev Adds a new referral to the contract.
      * @param referral The address of the referral.
      * @param referralShare The percentage share of the referral (must be between 1 and 100).
@@ -71,9 +120,10 @@ abstract contract FeeDistributor is EIP712, Ownable {
      */
     function addReferral(
         address referral,
-        uint256 referralShare,
-        uint256 referralDiscount,
-        address publicReferralCode
+        uint48 referralShare,
+        uint48 referralDiscount,
+        address publicReferralCode,
+        address[] memory users
     ) external onlyOwner {
         require(referral != address(0), "FD: Bad referral address");
         require(
@@ -83,7 +133,8 @@ abstract contract FeeDistributor is EIP712, Ownable {
         referrals[publicReferralCode] = ReferralData(
             referral,
             referralShare,
-            referralDiscount
+            referralDiscount,
+            users
         );
     }
 
@@ -92,10 +143,6 @@ abstract contract FeeDistributor is EIP712, Ownable {
      * @param publicReferralCode The address associated with the referral code to be removed.
      */
     function removeReferral(address publicReferralCode) external onlyOwner {
-        require(
-            referrals[publicReferralCode].referral != address(0),
-            "FD: Referral does not exist"
-        );
         delete referrals[publicReferralCode];
     }
     
@@ -120,8 +167,8 @@ abstract contract FeeDistributor is EIP712, Ownable {
         ReferralData memory referralData;
 
         // Check if the user already has a saved referral code
-        if (userReferralCode[user] != address(0)) {
-            referralData = referrals[userReferralCode[user]];
+        if (firstUsedCode[user] != address(0)) {
+            referralData = referrals[firstUsedCode[user]];
         } else if (refSigData.length != 0) {
             // If refSigData is provided, validate and set the referral code
             referralData = _getReferralData(user, refSigData);
@@ -155,10 +202,7 @@ abstract contract FeeDistributor is EIP712, Ownable {
      * @param refSigData The referral signature data.
      * @return The referral data associated with the user.
      */
-    function _getReferralData(address user, bytes memory refSigData)
-        private
-        returns (ReferralData memory)
-    {
+    function _getReferralData(address user, bytes memory refSigData) private returns (ReferralData memory) {
         (bytes32 salt, uint256 expiry, bytes memory signature) = abi.decode(
             refSigData,
             (bytes32, uint256, bytes)
@@ -177,16 +221,13 @@ abstract contract FeeDistributor is EIP712, Ownable {
         address referralCode = ECDSA.recover(digest, signature);
 
         // Ensure the referral code exists
-        require(
-            referrals[referralCode].referral != address(0),
-            "FD: Invalid referral code"
-        );
-
-        // Save the referral code for the user if not already set
-        if (userReferralCode[user] == address(0)) {
-            userReferralCode[user] = referralCode;
+        if (referrals[referralCode].referral == address(0)) {
+            // If the referral code does not exist, use the general referral code
+            return referrals[address(0)];
+        } else {
+            // If it exsists, save the referral code
+            firstUsedCode[user] = referralCode;
+            return referrals[referralCode];
         }
-
-        return referrals[referralCode];
     }
 }
