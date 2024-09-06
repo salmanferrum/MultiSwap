@@ -15,8 +15,8 @@
             "weth": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
             "foundry": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
             "deployments": {
-                "fiberRouter": "0x9e75c225f20638deae9273CE2a7c09009b7811a0",
-                "pool": "0xbd4961AeD7d06834DC7111f554dc0fd09be54BB0"
+                "fiberRouter": "0x4d4A82D55527bb4064e2991E079ab7346e28ddAA",
+                "pool": "0x4B926E6B289A4b13AA5C8b063525Da4175785107"
             },
             "ccip": {
                 "router": "0x141fa059441E0ca23ce184B6A78bafD2A517DdE8",
@@ -60,8 +60,8 @@
             "weth": "0x4200000000000000000000000000000000000006",
             "foundry": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
             "deployments": {
-                "fiberRouter": "0x51d457B7370e3D67D06b17f787ef08287a1a7122",
-                "pool": "0x5b0208c22cB590cD094Fed20712881AA58363B40"
+                "fiberRouter": "0xb56A9e7C7caBE1652B3Fe7D4e65d8b4548B34274",
+                "pool": "0xe9978A3A3D63FB92F7401c86C54629CC92eFEd36"
             },
             "ccip": {
                 "router": "0x881e3A65B4d4a04dD529061dd0071cf975F58bCD",
@@ -105,17 +105,12 @@
             "weth": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
             "foundry": "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
             "deployments": {
-                "fiberRouter": "0x3f8c19369240a578fE76D548493322EC1c5Ff34e",
-                "pool": "0x2325C5A863C532021f5ae0465e30F2896B447745"
+                "fiberRouter": "0xF8A11B60258fA241dcEfe2ba49C92E8ec8f23692",
+                "pool": "0x64Da56eBFD36cCc950cA9b52f4c0390AB75BB610"
             },
             "ccip": {
                 "router": "0x34B03Cb9086d7D758AC55af71584F81A598759FE",
                 "chainSelector": 11344663589394135000
-            },
-            "stg": {
-                "stgUSDCPool": "",
-                "stgEndpointID": 0,
-                "stgEndpoint": ""
             },
             "swapRouters": [
                 {
