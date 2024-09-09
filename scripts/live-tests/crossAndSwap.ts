@@ -19,8 +19,13 @@ async function main() {
 
     const srcFoundry = currentNetworkInfo.foundry
     const dstFoundry = dstNetworkInfo.foundry
-    const toToken = "0x4200000000000000000000000000000000000006"
-    const amountIn = 20000n
+    const toToken = "0x7f5373AE26c3E8FfC4c77b7255DF7eC1A9aF52a6"
+    const amountIn = 10000n
+    const srcFoundryContract = await hre.ethers.getContractAt("Token", srcFoundry);
+    const approveFoundryTx = await srcFoundryContract.approve(fiberRouterAddress, amountIn)
+    approveFoundryTx.wait()
+    console.log("Approved Foundry")
+
     const oneInchRouterAddress = "0x111111125421ca6dc452d289314280a0f8842a65"
 
     const res = await get1InchData(currentNetworkInfo.chainId, dstFoundry, toToken, amountIn, dstFiberRouterAddress, walletAddress)
