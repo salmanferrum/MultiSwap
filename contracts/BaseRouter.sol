@@ -20,8 +20,7 @@ abstract contract BaseRouter is Ownable, ReentrancyGuard {
 
     event InitiateCross(
         address sourceFoundryToken,
-        uint256 amountIn,
-        address remoteFoundryToken,
+        uint256 settledAmount,
         address recipient,
         uint256 targetChainId,
         uint256 gasFee
@@ -31,8 +30,7 @@ abstract contract BaseRouter is Ownable, ReentrancyGuard {
         address fromToken,
         uint256 amountIn,
         address sourceFoundryToken,
-        uint256 amountOut,
-        address remoteFoundryToken,
+        uint256 settledAmount,
         address recipient,
         uint256 targetChainId,
         uint256 gasFee

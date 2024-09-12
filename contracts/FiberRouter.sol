@@ -9,7 +9,6 @@ import { IWETH } from "./common/IWETH.sol";
 import { StargateComposer } from "./StargateComposer.sol";
 import { QuantumPortalApp } from "./QuantumPortalApp.sol";
 
-
 contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIPApp {
     constructor(
         address pool,
@@ -21,7 +20,6 @@ contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIP
     //#############################################################
     //###################### USER FUNCTIONS #######################
     //#############################################################
-
 
     function swapOnSameNetwork(
         uint256 amountIn,
@@ -245,6 +243,7 @@ contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIP
     //#############################################################
     //################# INTERNAL LOGIC FUNCTIONS ##################
     //#############################################################
+
     function _cross(
         address sourceFoundryToken,
         uint256 amountIn,
@@ -272,6 +271,8 @@ contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIP
         } else {
             revert("FR: Invalid swap type");
         }
+
+        emit InitiateCross(sourceFoundryToken, amountIn, recipient, dstChainId, feeAmount);
     }
 
     function _swapAndCross(
@@ -299,9 +300,7 @@ contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIP
             // If not NATIVE Token, transfer ERC20 token to contract
             amountIn = _moveTokens(fromToken, msg.sender, address(this), amountIn);
         }
-
-       //  amountIn = _moveTokens(fromToken, msg.sender, address(this), amountIn);
-
+        
         uint256 amountOut = _swap(
             address(this),
             fromToken,
@@ -323,5 +322,7 @@ contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIP
         } else {
             revert("FR: Invalid swap type");
         }
+
+        emit SwapAndInitiateCross(fromToken, amountIn, sourceFoundryToken, amountOut, recipient, dstChainId, feeAmount);
     }
 }
