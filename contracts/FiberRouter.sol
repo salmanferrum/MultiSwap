@@ -300,7 +300,7 @@ contract FiberRouter is FeeDistributor, StargateComposer, QuantumPortalApp, CCIP
             // If not NATIVE Token, transfer ERC20 token to contract
             amountIn = _moveTokens(fromToken, msg.sender, address(this), amountIn);
         }
-        
+
         uint256 amountOut = _swap(
             address(this),
             fromToken,

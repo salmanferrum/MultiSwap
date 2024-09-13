@@ -11,8 +11,9 @@ async function main() {
 
     const currentNetworkInfo = addresses.networks[thisNetwork];
     const pool = await hre.ethers.getContractAt("Pool", currentNetworkInfo.deployments.pool);
-    const usdc = await hre.ethers.getContractAt("MockUSDC", "0x6FCF42A7EFFC92410CE6dc8fC13bD4600abe7bB6");
-    const liquidityAmount = 1000000n * (10n ** 18n)
+    const usdc = await hre.ethers.getContractAt("MockUSDC", currentNetworkInfo.foundry);
+    const liquidityAmount = 5n * (10n ** 18n)
+    console.log(liquidityAmount)
     const tx = await usdc.approve(pool, liquidityAmount)
     tx.wait()
     console.log("Adding liquidity")
